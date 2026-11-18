@@ -1,0 +1,21 @@
+# Config for the local test broker (testbroker/). Password for all users: "test".
+#   export MQTT_ADMIN_PASSWORD=test MQTT_PW_KITCHEN=test MQTT_PW_LIVINGROOM=test \
+#          MQTT_PW_TASMOFLEET=test MQTT_PW_HOMEASSISTANT=test MQTT_PW_VIEWER=test \
+#          MQTT_PW_UNKNOWN=wrong
+
+endpoints:
+  plain:
+    host: 127.0.0.1
+    port: 1883
+
+observer: admin
+timeout: 1.0
+
+identities:
+  admin:         {username: admin,         password_env: MQTT_ADMIN_PASSWORD}
+  kitchen:       {username: kitchen,       password_env: MQTT_PW_KITCHEN}
+  livingroom:    {username: livingroom,    password_env: MQTT_PW_LIVINGROOM}
+  tasmofleet:    {username: tasmofleet,    password_env: MQTT_PW_TASMOFLEET}
+  homeassistant: {username: homeassistant, password_env: MQTT_PW_HOMEASSISTANT}
+  viewer:        {username: viewer,        password_env: MQTT_PW_VIEWER}
+  unknown:       {username: nobody,        password_env: MQTT_PW_UNKNOWN}

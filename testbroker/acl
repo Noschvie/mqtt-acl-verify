@@ -1,0 +1,24 @@
+# Classic ACL matching examples/cases.example.yaml (subset without TLS cases).
+# Classic ACL has no deny rules: 'ha-receive-filedownload' is expected to FAIL
+# here. That is the point - it shows the backend limitation.
+
+user admin
+topic readwrite #
+
+user tasmofleet
+topic read stat/#
+topic read tele/#
+topic write cmnd/#
+
+user homeassistant
+topic read stat/#
+topic read tele/#
+
+user viewer
+topic read tele/#
+topic read stat/#
+
+# Tasmota devices: username = Tasmota Topic
+pattern read cmnd/%u/#
+pattern write stat/%u/#
+pattern write tele/%u/#

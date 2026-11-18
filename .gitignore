@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Local configuration and results - may contain hostnames, usernames or log excerpts
+/config.yaml
+/cases.yaml
+reports/
+*.log
+.env
+testbroker/passwd

@@ -1,0 +1,52 @@
+# Copy to config.yaml (ignored by git) and adapt.
+# Passwords are never written here: each identity names an environment variable.
+
+endpoints:
+  plain:
+    host: mqtt.example.lan
+    port: 1883
+  tls:
+    host: mqtt.example.lan
+    port: 8883
+    tls: true
+    # ca_file: /etc/ssl/certs/my-ca.pem   # omit to use the system CA store
+    # protocol: 4                          # 4 = MQTT 3.1.1, default 5 = MQTT v5
+
+default_endpoint: plain
+timeout: 2.0
+
+# Privileged identity that injects and observes test messages.
+# It needs read and write access to every topic used in the cases.
+observer: admin
+
+identities:
+  admin:
+    username: admin
+    password_env: MQTT_ADMIN_PASSWORD
+    endpoint: tls
+
+  # Convention: MQTT username = Tasmota Topic
+  kitchen:
+    username: kitchen
+    password_env: MQTT_PW_KITCHEN
+  livingroom:
+    username: livingroom
+    password_env: MQTT_PW_LIVINGROOM
+
+  tasmofleet:
+    username: tasmofleet
+    password_env: MQTT_PW_TASMOFLEET
+    endpoint: tls
+  homeassistant:
+    username: homeassistant
+    password_env: MQTT_PW_HOMEASSISTANT
+    endpoint: tls
+  viewer:
+    username: viewer
+    password_env: MQTT_PW_VIEWER
+    endpoint: tls
+
+  # Identity without valid credentials, for "unknown client" cases
+  unknown:
+    username: nobody
+    password_env: MQTT_PW_UNKNOWN

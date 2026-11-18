@@ -1,0 +1,84 @@
+# Cases for the local test broker (testbroker/). All on the plain listener.
+# 'ha-receive-filedownload' is expected to FAIL: Classic ACL cannot express
+# "read stat/# except stat/+/FILEDOWNLOAD".
+
+cases:
+  # --- Tasmota device --------------------------------------------------
+  - id: dev-receive-own-cmnd
+    client: kitchen
+    action: receive
+    topic: cmnd/kitchen/#
+    publish_topic: cmnd/kitchen/{probe}
+    expect: allow
+
+  - id: dev-receive-foreign-cmnd
+    client: kitchen
+    action: receive
+    topic: cmnd/livingroom/#
+    publish_topic: cmnd/livingroom/{probe}
+    expect: deny
+
+  - id: dev-publish-own-tele
+    client: kitchen
+    action: publish
+    topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: dev-publish-foreign-stat
+    client: kitchen
+    action: publish
+    topic: stat/livingroom/{probe}
+    expect: deny
+
+  # --- TasmoFleet ------------------------------------------------------
+  - id: fleet-receive-stat
+    client: tasmofleet
+    action: receive
+    topic: stat/+/#
+    publish_topic: stat/kitchen/{probe}
+    expect: allow
+
+  - id: fleet-publish-cmnd
+    client: tasmofleet
+    action: publish
+    topic: cmnd/kitchen/{probe}
+    expect: allow
+
+  # --- Home Assistant --------------------------------------------------
+  - id: ha-receive-stat
+    client: homeassistant
+    action: receive
+    topic: stat/#
+    publish_topic: stat/kitchen/{probe}
+    expect: allow
+
+  # FILEDOWNLOAD carries backup content. 'live' is needed because the topic
+  # name itself is what the rule protects. The observer publishes a dummy
+  # payload; TasmoFleet may see one unexpected FILEDOWNLOAD message.
+  - id: ha-receive-filedownload
+    client: homeassistant
+    action: receive
+    topic: stat/#
+    publish_topic: stat/kitchen/FILEDOWNLOAD
+    live: true
+    expect: deny
+
+  # --- Viewer ----------------------------------------------------------
+  - id: viewer-receive-tele
+    client: viewer
+    action: receive
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: viewer-publish
+    client: viewer
+    action: publish
+    topic: tele/kitchen/{probe}
+    expect: deny
+
+  # --- Connections and transport --------------------------------------
+  - id: unknown-connect
+    client: unknown
+    action: connect
+    expect: deny
