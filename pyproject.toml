@@ -9,7 +9,7 @@ description = "Broker-independent test suite to verify MQTT ACLs"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "paho-mqtt>=2.0",
     "PyYAML>=6.0",
