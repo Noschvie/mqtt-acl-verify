@@ -1,6 +1,6 @@
 # Cases for the local test broker (testbroker/). All on the plain listener.
-# 'ha-receive-filedownload' is expected to FAIL: Classic ACL cannot express
-# "read stat/# except stat/+/FILEDOWNLOAD".
+# All cases are expected to pass. 'ha-receive-filedownload' checks the
+# 'topic deny stat/+/FILEDOWNLOAD' rule for homeassistant in testbroker/acl.
 
 cases:
   # --- Tasmota device --------------------------------------------------

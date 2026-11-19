@@ -103,7 +103,5 @@ def test_testbroker_cases(broker, tmp_path, monkeypatch):
 
     results = {r.case.id: r for r in run_all(load_config(cfg, ROOT / "testbroker/cases.yaml"))}
 
-    # Classic ACL cannot deny FILEDOWNLOAD while allowing stat/# - expected limitation.
-    assert results.pop("ha-receive-filedownload").status is Status.FAIL
     failed = {cid: r.detail for cid, r in results.items() if r.status is not Status.PASS}
     assert failed == {}

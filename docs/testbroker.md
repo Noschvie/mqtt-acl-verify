@@ -35,6 +35,8 @@ docker compose logs mosquitto > broker.log
 mqtt-acl-verify inventory broker.log -p -u
 ```
 
-Expected: `11 cases: 10 passed, 1 failed, 0 errors` (exit code 1) – all cases pass except `ha-receive-filedownload`. Classic ACL has no deny rules, so "read `stat/#` but not `stat/+/FILEDOWNLOAD`" cannot be expressed. The failing case documents that limitation.
+Expected: `11 cases: 11 passed, 0 failed, 0 errors` (exit code 0).
+
+`ha-receive-filedownload` checks a deny rule: Home Assistant may read `stat/#`, but not `stat/+/FILEDOWNLOAD` (backup content). In the ACL file this is `topic deny stat/+/FILEDOWNLOAD`. A deny rule takes precedence over read/write rules regardless of line order. Remove the line and the case fails.
 
 The integration test (`tests/test_integration.py`) runs the same cases against a locally installed `mosquitto` binary and is skipped if it is missing.

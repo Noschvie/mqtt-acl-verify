@@ -1,6 +1,6 @@
 # Classic ACL matching examples/cases.example.yaml (subset without TLS cases).
-# Classic ACL has no deny rules: 'ha-receive-filedownload' is expected to FAIL
-# here. That is the point - it shows the backend limitation.
+# 'topic deny' takes precedence over read/write rules regardless of line order
+# (verified with Mosquitto 2.0.18).
 
 user admin
 topic readwrite #
@@ -11,6 +11,7 @@ topic read tele/#
 topic write cmnd/#
 
 user homeassistant
+topic deny stat/+/FILEDOWNLOAD
 topic read stat/#
 topic read tele/#
 
