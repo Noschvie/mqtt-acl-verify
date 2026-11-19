@@ -39,4 +39,13 @@ Expected: `11 cases: 11 passed, 0 failed, 0 errors` (exit code 0).
 
 `ha-receive-filedownload` checks a deny rule: Home Assistant may read `stat/#`, but not `stat/+/FILEDOWNLOAD` (backup content). In the ACL file this is `topic deny stat/+/FILEDOWNLOAD`. A deny rule takes precedence over read/write rules regardless of line order. Remove the line and the case fails.
 
+**After changing `acl` or `mosquitto.conf`** (including via `git pull`), recreate the container:
+
+```sh
+docker compose up -d --force-recreate
+docker compose exec mosquitto grep deny /mosquitto/config/acl   # check what the broker sees
+```
+
+Mosquitto reads these files only at startup, and a single-file bind mount keeps pointing to the old file once git replaces it. A plain `docker compose up -d` does nothing while the container is running, and a reload via SIGHUP still sees the old file.
+
 The integration test (`tests/test_integration.py`) runs the same cases against a locally installed `mosquitto` binary and is skipped if it is missing.
