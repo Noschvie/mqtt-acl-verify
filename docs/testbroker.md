@@ -9,6 +9,18 @@
 | `config.yaml`, `cases.yaml` | Matching configuration and cases |
 | `compose.yaml`, `create-passwd.sh` | Docker setup |
 
+Prerequisites: Docker with the compose plugin, and the package installed in a virtual environment in the repository root:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e '.[dev]'
+```
+
+The `mqtt-acl-verify` command is only available while the venv is active. In a new shell, run `. .venv/bin/activate` again (from `testbroker/`: `. ../.venv/bin/activate`), or call it directly as `../.venv/bin/mqtt-acl-verify`.
+
+Start the broker and run the cases:
+
 ```sh
 cd testbroker
 ./create-passwd.sh            # all users get password "test"
@@ -23,6 +35,6 @@ docker compose logs mosquitto > broker.log
 mqtt-acl-verify inventory broker.log -p -u
 ```
 
-Expected: all cases pass except `ha-receive-filedownload`. Classic ACL has no deny rules, so "read `stat/#` but not `stat/+/FILEDOWNLOAD`" cannot be expressed. The failing case documents that limitation.
+Expected: `11 cases: 10 passed, 1 failed, 0 errors` (exit code 1) – all cases pass except `ha-receive-filedownload`. Classic ACL has no deny rules, so "read `stat/#` but not `stat/+/FILEDOWNLOAD`" cannot be expressed. The failing case documents that limitation.
 
 The integration test (`tests/test_integration.py`) runs the same cases against a locally installed `mosquitto` binary and is skipped if it is missing.

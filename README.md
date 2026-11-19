@@ -20,8 +20,12 @@ ACL tests work against any MQTT 3.1.1 / 5 broker, since they only use the protoc
 
 ## Quick start
 
+Requires Python 3.13 or later. Install into a virtual environment (Debian/Ubuntu refuse system-wide `pip install`):
+
 ```sh
-pip install .            # or: pip install -e '.[dev]'
+python3 -m venv .venv
+. .venv/bin/activate     # needed in every new shell, or call .venv/bin/mqtt-acl-verify
+pip install .            # or for development: pip install -e '.[dev]'
 
 cp examples/config.example.yaml config.yaml
 cp examples/cases.example.yaml  cases.yaml
