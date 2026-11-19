@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
+
+
+PROBE_LEVEL = re.compile(r"^_aclprobe_[0-9a-f]+$")
+PROBE_CLIENT = re.compile(r"-aclprobe-[0-9a-f]+$")
 
 
 class Direction(str, Enum):
@@ -29,7 +34,17 @@ class Inventory:
 
     def add(self, client_id: str, direction: Direction, topic: str) -> None:
         username = self.usernames.get(client_id, "?")
+        # Unique probe levels of mqtt-acl-verify are merged into one {probe} row.
+        topic = "/".join("{probe}" if PROBE_LEVEL.match(lvl) else lvl for lvl in topic.split("/"))
         self.counts[InventoryEntry(username, client_id, direction, topic)] += 1
+
+    def without_probes(self) -> "Inventory":
+        """Drop traffic of mqtt-acl-verify's own test connections."""
+        result = Inventory(usernames=dict(self.usernames))
+        for entry, n in self.counts.items():
+            if not PROBE_CLIENT.search(entry.client_id):
+                result.counts[entry] += n
+        return result
 
     def with_placeholders(self) -> "Inventory":
         """Replace the client's own username/client ID in topic levels by %u / %c.

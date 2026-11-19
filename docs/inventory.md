@@ -17,12 +17,16 @@ Then let the system run for a while, ideally covering daily routines (backups, d
 mqtt-acl-verify inventory /var/log/mosquitto/mosquitto.log                 # Markdown
 mqtt-acl-verify inventory mosquitto.log -f csv > inventory.csv             # CSV
 mqtt-acl-verify inventory mosquitto.log --placeholders --by-user           # profile view
+mqtt-acl-verify inventory mosquitto.log -p -u -x                           # same, without test traffic
 ```
 
 | Option | Effect |
 |---|---|
 | `-p`, `--placeholders` | Replaces a topic level equal to the client's username by `%u` and equal to its client ID by `%c`. With the convention *username = Tasmota Topic*, `tele/kitchen/STATE` becomes `tele/%u/STATE`. |
 | `-u`, `--by-user` | Merges all client IDs of a username into one row |
+| `-x`, `--exclude-probes` | Drops traffic of mqtt-acl-verify's own test connections (client IDs `…-aclprobe-…`). Use it on production logs while tests ran. |
+
+The unique probe levels of test messages (`_aclprobe_3f9a1c`) are always shown as `{probe}`, so repeated test runs collapse into one row.
 
 Parsed log lines:
 

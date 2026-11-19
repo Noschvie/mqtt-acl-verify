@@ -37,3 +37,21 @@ def test_placeholders_and_grouping():
 def test_csv_output():
     csv = parse(LOG.splitlines()).to_csv()
     assert csv.splitlines()[0] == "username,client_id,direction,topic,count"
+
+
+PROBE_LOG = """\
+1700000000: New client connected from 10.0.0.9:4000 as kitchen-aclprobe-a1b2c3 (p5, c1, k30, u'kitchen').
+1700000001: Received PUBLISH from kitchen-aclprobe-a1b2c3 (d0, q1, r0, m1, 'tele/kitchen/_aclprobe_123abc', ... (25 bytes))
+1700000002: Received PUBLISH from kitchen-aclprobe-a1b2c3 (d0, q1, r0, m2, 'tele/kitchen/_aclprobe_456def', ... (25 bytes))
+"""
+
+
+def test_probe_levels_are_merged():
+    rows = {e.topic: n for e, n in parse(PROBE_LOG.splitlines()).entries()}
+    assert rows == {"tele/kitchen/{probe}": 2}
+
+
+def test_exclude_probes():
+    inv = parse((LOG + PROBE_LOG).splitlines()).without_probes()
+    assert all("aclprobe" not in e.client_id for e, _ in inv.entries())
+    assert inv.entries()

@@ -35,6 +35,8 @@ def _cmd_inventory(args: argparse.Namespace) -> int:
             inv = mosquitto_log.parse(fh, inv)
     if inv is None:
         return 0
+    if args.exclude_probes:
+        inv = inv.without_probes()
     if args.placeholders:
         inv = inv.with_placeholders()
     if args.by_user:
@@ -63,6 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="replace the client's own username / client ID in topics by %%u / %%c")
     inv.add_argument("-u", "--by-user", action="store_true",
                      help="merge all client IDs of a username into one row")
+    inv.add_argument("-x", "--exclude-probes", action="store_true",
+                     help="drop traffic of mqtt-acl-verify's own test connections")
     inv.set_defaults(func=_cmd_inventory)
     return parser
 
