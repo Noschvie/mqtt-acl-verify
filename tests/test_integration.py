@@ -125,7 +125,8 @@ def test_dynsec_testbroker_cases(tmp_path, monkeypatch):
     cfg.write_text(text)
 
     cases = [ROOT / "testbroker/cases.yaml", ROOT / "testbroker-dynsec/cases-dynsec.yaml",
-             ROOT / "testbroker-dynsec/cases-mtls.yaml", ROOT / "testbroker-dynsec/cases-apps.yaml"]
+             ROOT / "testbroker-dynsec/cases-mtls.yaml", ROOT / "testbroker-dynsec/cases-apps.yaml",
+             ROOT / "testbroker-dynsec/cases-revocation.yaml"]
     results = run_all(load_config(cfg, cases))
 
     failed = {r.case.id: r.detail for r in results if r.status is not Status.PASS}

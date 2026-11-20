@@ -11,7 +11,9 @@
 | `cases-dynsec.yaml` | Additional cases for the DynSec admin |
 | `cases-mtls.yaml` | Admin login variants on the mTLS listeners and the PMSS design v0.7 |
 | `cases-apps.yaml` | PMSS design v0.8: TLS with password (8883), app certificates (8887), intermediate CA |
-| `make-certs.sh` | Server CA, admin CA, app CA with intermediate CA, server and client certificates in `certs/` (called by `setup.sh`) |
+| `cases-revocation.yaml` | Revoking app certificates: CRL (8888, 8889) vs. a separate TasmoFleet root CA (8890) |
+| `reload-check.sh` | Changes CRL and cafile at runtime (8891, 8892) and checks SIGHUP vs. restart; restores the files |
+| `make-certs.sh` | Server CA, admin CA, app CA with intermediate CAs, TasmoFleet root CA, CRLs, server and client certificates in `certs/` (called by `setup.sh`) |
 | `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2-alpine` |
 
 ## Run
@@ -25,12 +27,13 @@ cd testbroker-dynsec
 export MQTT_OBSERVER_PASSWORD=test MQTT_DYNSEC_ADMIN_PASSWORD=test \
        MQTT_PW_KITCHEN=test MQTT_PW_LIVINGROOM=test MQTT_PW_TASMOFLEET=test \
        MQTT_PW_HOMEASSISTANT=test MQTT_PW_VIEWER=test MQTT_PW_UNKNOWN=wrong
-../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml cases-apps.yaml
+../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml cases-apps.yaml cases-revocation.yaml
+./reload-check.sh
 ```
 
-Expected: `66 cases: 66 passed, 0 failed, 0 errors`.
+Expected: `75 cases: 75 passed, 0 failed, 0 errors`, and `reload-check.sh` prints 9 × `PASS`.
 
-Host ports: **1884** (plain), **8883** (TLS), **8884** to **8887** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
+Host ports: **1884** (plain), **8883** (TLS), **8884** to **8892** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
 
 `./setup.sh` keeps an existing DynSec configuration in `data/`. To start from scratch: `./setup.sh --reset`. After changing `mosquitto.conf`, run `./setup.sh` again (it recreates the container). After changing `dynsec-setup.txt`, run `./setup.sh --reset`.
 
@@ -169,6 +172,44 @@ So whoever holds the key of the intermediate CA can log in as any application, b
 
 Rule: after locking a certificate because of a compromise, never reuse its subject. The new certificate gets a new name, e.g. with a suffix `-2`. Without a CRL this is the only way to keep the old certificate locked.
 
+## Revoking app certificates: CRL vs. separate TasmoFleet CA
+
+For the later stage in which TasmoFleet issues app certificates, a compromised TasmoFleet signing key must be lockable. `deleteClient` does not help there, since the key can issue certificates for every existing application. Two ways were compared:
+
+1. **CRL** on the listener (`crlfile`), TasmoFleet as intermediate CA below the app CA.
+2. **Separate TasmoFleet root CA**, listed next to the app CA in `cafile`; locking = removing it from `cafile`.
+
+**CRL** (`cases-revocation.yaml`, listeners 8888 and 8889):
+
+| Case | Result |
+|---|---|
+| Valid app certificate, CRL present | ✅ allowed |
+| App certificate revoked in the CRL of the app CA | ❌ refused |
+| Certificate of the TasmoFleet intermediate CA, whose (empty) CRL is in `crlfile` | ✅ allowed |
+| Certificate of an intermediate CA that is revoked in the CRL of the app CA | ❌ refused – the whole chain is checked |
+| Certificate of a valid intermediate CA **without** a CRL of its own in `crlfile` | ❌ refused – every CA of the chain needs a CRL |
+| **Expired** CRL | ❌ **every** certificate refused |
+
+**Separate root CA** (listener 8890 with both CAs, 8887 with the app CA only):
+
+| Case | Result |
+|---|---|
+| TasmoFleet certificate, both CAs in `cafile` | ✅ allowed |
+| App certificate, both CAs in `cafile` | ✅ allowed |
+| TasmoFleet certificate, TasmoFleet CA not in `cafile` | ❌ refused |
+
+**Reload** (`reload-check.sh`, listeners 8891 and 8892): Mosquitto reads both files only when the listener is set up.
+
+| Change | Effective after |
+|---|---|
+| New CRL in `crlfile` | **SIGHUP** (no restart needed) |
+| CA removed from `cafile` | **restart** only – SIGHUP keeps the old CA |
+
+**Consequences:**
+
+- With a CRL, the CRL of the app CA **and** the CRL of the TasmoFleet intermediate CA must be in `crlfile` at all times and must be renewed before they expire. Otherwise every certificate on the listener is refused. The CRL of the app CA is signed with the offline key, the CRL of the intermediate CA by TasmoFleet.
+- With a separate root CA there is nothing to renew. Locking needs a broker restart (short interruption for all clients on all listeners).
+
 ## CI
 
-The integration test `test_dynsec_testbroker_cases` runs all 66 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA.
+The integration test `test_dynsec_testbroker_cases` runs all 75 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA. After the tests it runs `reload-check.sh`.
