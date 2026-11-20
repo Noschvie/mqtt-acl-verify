@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mqtt-acl-verify"
-version = "0.3.0"
+version = "0.4.0"
 description = "Broker-independent test suite to verify MQTT ACLs"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
