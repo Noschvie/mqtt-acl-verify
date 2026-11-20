@@ -7,11 +7,12 @@ set -eu
 cd "$(dirname "$0")"
 
 USERS="admin kitchen livingroom tasmofleet homeassistant viewer"
+IMAGE=$(sed -n 's/^ *image: *\([^ ]*\).*/\1/p' compose.yaml)
 
 # Runs inside the container so the file ends up owned by the mosquitto user (1883)
 # with mode 0700, as Mosquitto 2 expects.
 rm -f passwd
-docker run --rm -v "$PWD:/work" -e USERS="$USERS" eclipse-mosquitto:2 sh -c '
+docker run --rm -v "$PWD:/work" -e USERS="$USERS" "$IMAGE" sh -c '
     touch /work/passwd
     for user in $USERS; do mosquitto_passwd -b /work/passwd "$user" test; done
     chown 1883:1883 /work/passwd
