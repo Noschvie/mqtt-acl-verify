@@ -15,3 +15,4 @@ reports/
 .env
 testbroker/passwd
 testbroker-dynsec/data/
+testbroker-dynsec/certs/

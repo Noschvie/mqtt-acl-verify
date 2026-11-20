@@ -40,6 +40,11 @@ identities:
 | `password_env` | Name of the environment variable holding the password |
 | `endpoint` | Endpoint used by default for this identity |
 | `client_id` | Fixed client ID. Default: unique `<username>-aclprobe-<random>` |
+| `cert_file`, `key_file` | Client certificate and key for mTLS (only used on TLS endpoints). Set both or neither |
+
+`username: null` connects without username, e.g. on a listener with `use_identity_as_username`, where the certificate CN becomes the username.
+
+File paths (`ca_file`, `cert_file`, `key_file`) are relative to the directory of `config.yaml`.
 
 ## cases.yaml
 
