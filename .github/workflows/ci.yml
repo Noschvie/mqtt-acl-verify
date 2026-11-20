@@ -28,6 +28,13 @@ jobs:
       - name: Start DynSec test broker
         working-directory: testbroker-dynsec
         run: ./setup.sh
+      - name: Manage DynSec with the certificate admin (no password)
+        working-directory: testbroker-dynsec
+        run: |
+          docker compose exec -T mosquitto mosquitto_ctrl -h localhost -p 8885 \
+            --cafile /mosquitto/certs/ca.crt \
+            --cert /mosquitto/certs/dynsec-admin-cert.crt --key /mosquitto/certs/dynsec-admin-cert.key \
+            dynsec getDefaultACLAccess
       - name: Install package
         run: pip install -e '.[dev]'
       - name: Test

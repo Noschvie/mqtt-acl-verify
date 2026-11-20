@@ -5,6 +5,7 @@
 #   ./setup.sh           first run: init DynSec, start broker, apply dynsec-setup.txt
 #                        later runs: just (re)start the broker
 #   ./setup.sh --reset   delete the DynSec configuration and start from scratch
+#                        (certificates in certs/ are kept; delete certs/ to recreate them)
 #
 # All users get the password "test".
 set -euf
@@ -17,6 +18,10 @@ if [ "${1:-}" = "--reset" ]; then
     docker compose down
     # data/ belongs to the container user (1883), so delete it from inside a container
     docker run --rm -v "$PWD:/work" "$IMAGE" rm -rf /work/data
+fi
+
+if [ ! -f certs/ca.crt ]; then
+    ./make-certs.sh
 fi
 
 fresh=no

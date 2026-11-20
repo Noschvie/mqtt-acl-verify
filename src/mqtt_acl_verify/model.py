@@ -50,6 +50,8 @@ class Identity:
     password_env: str | None = None
     client_id: str | None = None
     endpoint: str | None = None
+    cert_file: str | None = None  # client certificate for mTLS
+    key_file: str | None = None
 
     def password(self) -> str | None:
         if not self.password_env:
@@ -151,8 +153,17 @@ def _load_yaml(path: Path) -> dict:
     return data
 
 
+def _resolve(base: Path, value: str | None) -> str | None:
+    """Resolve file paths relative to the directory of the config file."""
+    if not value:
+        return None
+    path = Path(value).expanduser()
+    return str(path if path.is_absolute() else base / path)
+
+
 def load_config(config_path: Path, cases_path: Path | list[Path] | None = None) -> Config:
     data = _load_yaml(config_path)
+    base = config_path.parent
 
     endpoints: dict[str, Endpoint] = {}
     for name, ep in (data.get("endpoints") or {}).items():
@@ -161,7 +172,7 @@ def load_config(config_path: Path, cases_path: Path | list[Path] | None = None) 
             host=ep["host"],
             port=int(ep["port"]),
             tls=bool(ep.get("tls", False)),
-            ca_file=ep.get("ca_file"),
+            ca_file=_resolve(base, ep.get("ca_file")),
             protocol=int(ep.get("protocol", 5)),
         )
     if not endpoints:
@@ -176,7 +187,11 @@ def load_config(config_path: Path, cases_path: Path | list[Path] | None = None) 
             password_env=ident.get("password_env"),
             client_id=ident.get("client_id"),
             endpoint=ident.get("endpoint"),
+            cert_file=_resolve(base, ident.get("cert_file")),
+            key_file=_resolve(base, ident.get("key_file")),
         )
+        if bool(identities[name].cert_file) != bool(identities[name].key_file):
+            raise ConfigError(f"identity '{name}': cert_file and key_file must be set together")
 
     observer = data.get("observer")
     if observer not in identities:

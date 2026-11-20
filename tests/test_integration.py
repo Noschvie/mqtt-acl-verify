@@ -120,9 +120,12 @@ def test_dynsec_testbroker_cases(tmp_path, monkeypatch):
     _wait_for_port(host, int(port))
     cfg = tmp_path / "config.yaml"
     text = (ROOT / "testbroker-dynsec/config.yaml").read_text()
-    cfg.write_text(text.replace("host: 127.0.0.1", f"host: {host}").replace("port: 1884", f"port: {port}"))
+    text = text.replace("host: 127.0.0.1", f"host: {host}").replace("port: 1884", f"port: {port}")
+    text = text.replace("certs/", f"{ROOT / 'testbroker-dynsec/certs'}/")
+    cfg.write_text(text)
 
-    cases = [ROOT / "testbroker/cases.yaml", ROOT / "testbroker-dynsec/cases-dynsec.yaml"]
+    cases = [ROOT / "testbroker/cases.yaml", ROOT / "testbroker-dynsec/cases-dynsec.yaml",
+             ROOT / "testbroker-dynsec/cases-mtls.yaml"]
     results = run_all(load_config(cfg, cases))
 
     failed = {r.case.id: r.detail for r in results if r.status is not Status.PASS}

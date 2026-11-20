@@ -1,0 +1,84 @@
+# Admin login variants on the mTLS listeners (overview questions 11, 17, 18).
+# These cases record the observed broker behaviour, including weaknesses.
+# Run:  mqtt-acl-verify run -c config.yaml -t cases-mtls.yaml
+
+cases:
+  # --- Variant A: listener 8884, mTLS plus DynSec password (PMSS design) ---
+  - id: a-admin-cert-and-password
+    client: admin-pw-cert
+    action: connect
+    endpoint: mtls-pw
+    expect: allow
+
+  - id: a-admin-without-cert
+    client: dynsec-admin
+    action: connect
+    endpoint: mtls-pw
+    expect: deny
+
+  - id: a-admin-wrong-password
+    client: admin-pw-wrong
+    action: connect
+    endpoint: mtls-pw
+    expect: deny
+
+  - id: a-admin-password-with-stranger-cert
+    description: "Weakness: any certificate of the CA works, the certificate is not bound to the user"
+    client: admin-pw-stranger-cert
+    action: connect
+    endpoint: mtls-pw
+    expect: allow
+
+  - id: a-admin-password-on-plain-listener
+    description: "Weakness (question 18): the admin password also works on the plain listener"
+    client: dynsec-admin
+    action: connect
+    endpoint: plain
+    expect: allow
+
+  # --- Variant B: listener 8885, username = certificate CN, no password (overview) ---
+  - id: b-admin-cert-only
+    client: admin-cert
+    action: connect
+    endpoint: mtls-id
+    expect: allow
+
+  - id: b-admin-cert-ignores-claimed-username
+    description: "The CN wins: claiming another username with a wrong password still logs in as dynsec-admin-cert"
+    client: admin-cert-claims-pw-admin
+    action: connect
+    endpoint: mtls-id
+    expect: allow
+
+  - id: b-admin-name-on-plain-without-password
+    client: admin-cert-name-only
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: b-admin-name-on-plain-with-password
+    client: admin-cert-name-guess
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: b-admin-cert-on-password-listener
+    client: admin-cert
+    action: connect
+    endpoint: mtls-pw
+    expect: deny
+
+  - id: b-stranger-cert-connects
+    description: "Weakness: any certificate of the CA connects; the CN gets only the rights DynSec gives it"
+    client: stranger-cert
+    action: connect
+    endpoint: mtls-id
+    expect: allow
+
+  - id: b-stranger-cert-has-no-rights
+    client: stranger-cert
+    action: receive
+    endpoint: mtls-id
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny

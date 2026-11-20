@@ -35,7 +35,12 @@ class Session:
         if identity.username is not None:
             self._client.username_pw_set(identity.username, identity.password())
         if endpoint.tls:
-            self._client.tls_set(ca_certs=endpoint.ca_file, cert_reqs=ssl.CERT_REQUIRED)
+            self._client.tls_set(
+                ca_certs=endpoint.ca_file,
+                certfile=identity.cert_file,
+                keyfile=identity.key_file,
+                cert_reqs=ssl.CERT_REQUIRED,
+            )
 
         self._cond = threading.Condition()
         self._connect_rc: mqtt.ReasonCode | None = None

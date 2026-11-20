@@ -13,6 +13,11 @@ setDefaultACLAccess unsubscribe allow
 removeRoleACL admin publishClientReceive #
 removeRoleACL admin subscribePattern #
 
+# --- Second admin for variant B: no password, authenticated only by its
+#     certificate (CN) on the use_identity_as_username listener 8885 ---
+createClient dynsec-admin-cert
+addClientRole dynsec-admin-cert admin
+
 # --- Observer for mqtt-acl-verify: read and write everything ---
 createRole role_observer
 addRoleACL role_observer publishClientSend # allow
