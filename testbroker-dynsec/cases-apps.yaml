@@ -1,0 +1,150 @@
+# PMSS design v0.8: TLS listener with password (8883) and app listener with
+# certificates of the app CA (host port 8887, production port 8885).
+# On 8887 the username is the full subject (use_subject_as_username),
+# e.g. "CN=homeassistant,O=mqtt-apps". App clients have no password.
+# Run:  ../.venv/bin/mqtt-acl-verify run -c config.yaml -t cases-apps.yaml
+
+cases:
+  # --- Listener 8883: TLS with password, same rights as on 1883 ---
+  - id: v-password-client-on-tls
+    client: homeassistant
+    action: connect
+    endpoint: tls-pw
+    expect: allow
+
+  - id: v-password-client-on-tls-rights
+    client: homeassistant
+    action: receive
+    endpoint: tls-pw
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: v-password-client-on-app-listener
+    description: "A password client without app certificate cannot use 8887"
+    client: homeassistant
+    action: connect
+    endpoint: mtls-app
+    expect: deny
+
+  # --- Listener 8887: app certificate, username = subject ---
+  - id: v-app-cert-connects
+    client: app-homeassistant
+    action: connect
+    endpoint: mtls-app
+    expect: allow
+
+  - id: v-app-cert-rights
+    description: "Rights of DynSec client CN=homeassistant,O=mqtt-apps"
+    client: app-homeassistant
+    action: receive
+    endpoint: mtls-app
+    topic: stat/#
+    publish_topic: stat/kitchen/{probe}
+    expect: allow
+
+  - id: v-app-cert-filedownload
+    client: app-homeassistant
+    action: receive
+    endpoint: mtls-app
+    topic: stat/#
+    publish_topic: stat/kitchen/FILEDOWNLOAD
+    live: true
+    expect: deny
+
+  - id: v-app-cert-publish-cmnd
+    client: app-homeassistant
+    action: publish
+    endpoint: mtls-app
+    topic: cmnd/kitchen/{probe}
+    expect: deny
+
+  - id: v-app-name-on-plain-without-password
+    description: "'TLS required': the app client has no password and cannot log in on 1883"
+    client: app-name-only
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: v-app-name-on-plain-with-password
+    client: app-name-guess
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: v-app-name-on-tls-with-password
+    client: app-name-guess
+    action: connect
+    endpoint: tls-pw
+    expect: deny
+
+  - id: v-admin-ca-cert-on-app-listener
+    client: pmss-admin
+    action: connect
+    endpoint: mtls-app
+    expect: deny
+
+  - id: v-server-ca-cert-on-app-listener
+    client: stranger-cert
+    action: connect
+    endpoint: mtls-app
+    expect: deny
+
+  - id: v-app-cert-on-admin-listener
+    client: app-homeassistant
+    action: connect
+    endpoint: mtls-admin
+    expect: deny
+
+  - id: v-misissued-admin-cn-connects
+    description: "App CA certificate with CN=pmss-admin logs in as CN=pmss-admin,O=mqtt-apps, not as pmss-admin"
+    client: app-pmss-admin
+    action: connect
+    endpoint: mtls-app
+    expect: allow
+
+  - id: v-misissued-admin-cn-has-no-rights
+    client: app-pmss-admin
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny
+
+  # --- Intermediate CA below the app CA (later: TasmoFleet issues app certificates) ---
+  - id: i-intermediate-with-chain-connects
+    description: "Listener trusts only the app CA; the chain via the intermediate CA is accepted"
+    client: int-viewer-chain
+    action: connect
+    endpoint: mtls-app
+    expect: allow
+
+  - id: i-intermediate-with-chain-rights
+    client: int-viewer-chain
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: i-intermediate-leaf-only-refused
+    description: "Without the intermediate CA in the certificate file the TLS handshake fails"
+    client: int-viewer-leaf-only
+    action: connect
+    endpoint: mtls-app
+    expect: deny
+
+  - id: i-intermediate-misissued-admin-cn-connects
+    description: "Whoever holds the intermediate CA key can log in as any app, but never as admin"
+    client: int-pmss-admin-chain
+    action: connect
+    endpoint: mtls-app
+    expect: allow
+
+  - id: i-intermediate-misissued-admin-cn-has-no-rights
+    client: int-pmss-admin-chain
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny

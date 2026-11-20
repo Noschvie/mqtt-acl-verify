@@ -82,6 +82,14 @@ addRoleACL role_viewer publishClientReceive stat/# allow
 createClient viewer -p test
 addClientRole viewer role_viewer
 
+# --- PMSS design v0.8: applications with app certificates on listener 8887.
+#     Username = full subject (use_subject_as_username), no password.
+#     No client CN=pmss-admin,O=mqtt-apps: a mis-issued certificate has no rights. ---
+createClient CN=homeassistant,O=mqtt-apps
+addClientRole CN=homeassistant,O=mqtt-apps role_homeassistant
+createClient CN=viewer,O=mqtt-apps
+addClientRole CN=viewer,O=mqtt-apps role_viewer
+
 # --- Tasmota devices: username = Tasmota Topic ---
 createRole role_tasmota
 addRoleACL role_tasmota subscribePattern cmnd/%u/# allow

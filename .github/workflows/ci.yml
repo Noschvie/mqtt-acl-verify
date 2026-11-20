@@ -51,6 +51,19 @@ jobs:
           if ctrl pmss-admin-deleted; then echo "deleted admin still has access"; exit 1; fi
           # known weakness: disableClient does not lock a certificate login
           if ! ctrl pmss-admin-disabled; then echo "disableClient now locks certificate logins"; exit 1; fi
+      - name: PMSS design v0.8 - mis-issued admin CN on the app listener 8887
+        working-directory: testbroker-dynsec
+        run: |
+          # An app certificate with CN=pmss-admin (from the app CA or the intermediate CA)
+          # logs in as "CN=pmss-admin,O=mqtt-apps" and must not reach the control API.
+          ctrl() {
+            docker compose exec -T mosquitto mosquitto_ctrl -h localhost -p 8887 \
+              --cafile /mosquitto/certs/ca.crt \
+              --cert "/mosquitto/certs/$1" --key "/mosquitto/certs/$2" \
+              dynsec listClients 2>&1 | grep -qx pmss-admin
+          }
+          if ctrl app-pmss-admin.crt app-pmss-admin.key; then echo "app CA certificate got admin rights"; exit 1; fi
+          if ctrl int-pmss-admin-chain.crt int-pmss-admin.key; then echo "intermediate CA certificate got admin rights"; exit 1; fi
       - name: Install package
         run: pip install -e '.[dev]'
       - name: Test
