@@ -1,4 +1,4 @@
-# Config for the local test broker (testbroker/). Password for all users: "test".
+# Config for the local test broker (testbroker/), started with ./setup.sh. Password for all users: "test".
 #   export MQTT_ADMIN_PASSWORD=test MQTT_PW_KITCHEN=test MQTT_PW_LIVINGROOM=test \
 #          MQTT_PW_TASMOFLEET=test MQTT_PW_HOMEASSISTANT=test MQTT_PW_VIEWER=test \
 #          MQTT_PW_UNKNOWN=wrong
