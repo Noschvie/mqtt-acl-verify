@@ -71,6 +71,9 @@ jobs:
           MQTT_TEST_BROKER: 127.0.0.1:1883
           MQTT_TEST_BROKER_DYNSEC: 127.0.0.1:1884
         run: pytest -v
+      - name: Revocation - reload of CRL and cafile (SIGHUP vs. restart)
+        working-directory: testbroker-dynsec
+        run: ./reload-check.sh
       - name: Broker log
         if: always()
         working-directory: testbroker

@@ -37,6 +37,22 @@ endpoints:
     port: 8887
     tls: true
     ca_file: certs/ca.crt
+  # Revocation (cases-revocation.yaml): like mtls-app, with CRL / expired CRL / two roots
+  mtls-crl:
+    host: 127.0.0.1
+    port: 8888
+    tls: true
+    ca_file: certs/ca.crt
+  mtls-crl-expired:
+    host: 127.0.0.1
+    port: 8889
+    tls: true
+    ca_file: certs/ca.crt
+  mtls-two-roots:
+    host: 127.0.0.1
+    port: 8890
+    tls: true
+    ca_file: certs/ca.crt
 
 # The DynSec admin only manages DynSec and has no access to normal topics.
 # A separate client with full rights observes the tests.
@@ -149,6 +165,23 @@ identities:
     username: null
     cert_file: certs/app-renamed-new.crt
     key_file: certs/app-renamed-new.key
+  # --- Revocation (cases-revocation.yaml) ---
+  app-revoked:                 # app CA, revoked in the CRL of the app CA
+    username: null
+    cert_file: certs/app-revoked.crt
+    key_file: certs/app-revoked.key
+  int-revokedca-chain:         # from an intermediate CA that is revoked in the CRL of the app CA
+    username: null
+    cert_file: certs/int-revokedca-chain.crt
+    key_file: certs/int-revokedca.key
+  int-nocrl-chain:             # from a valid intermediate CA without a CRL of its own
+    username: null
+    cert_file: certs/int-nocrl-chain.crt
+    key_file: certs/int-nocrl.key
+  tf-app:                      # from the separate TasmoFleet root CA
+    username: null
+    cert_file: certs/tf-app.crt
+    key_file: certs/tf-app.key
   app-name-only:               # subject username of the app client, without certificate
     username: "CN=homeassistant,O=mqtt-apps"
   app-name-guess:

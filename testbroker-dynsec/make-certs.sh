@@ -100,6 +100,63 @@ for f in int-viewer int-pmss-admin; do
     cat "$f.crt" app-int-ca.crt > "$f-chain.crt"
 done
 
+# --- Revocation (cases-revocation.yaml): CRL vs. a separate TasmoFleet root CA ---
+
+# Two more intermediate CAs below the app CA
+int_ca() {
+    key "$1.key"
+    openssl req -new -key "$1.key" -out "$1.csr" -subj "/CN=mqtt-acl-verify test $1"
+    printf 'basicConstraints=critical,CA:TRUE,pathlen:0\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid\n' > int.ext
+    openssl x509 -req -in "$1.csr" -CA app-ca.crt -CAkey app-ca.key -CAcreateserial \
+        -out "$1.crt" -days $days -extfile int.ext 2>/dev/null
+}
+int_ca app-int-revoked-ca     # revoked in the CRL of the app CA
+int_ca app-int-nocrl-ca       # valid, but no CRL of its own in crl.pem
+
+app_cert app-revoked revoked-app app-ca              # revoked in the CRL of the app CA
+app_cert int-revokedca revokedca-app app-int-revoked-ca
+app_cert int-nocrl nocrl-app app-int-nocrl-ca
+cat int-revokedca.crt app-int-revoked-ca.crt > int-revokedca-chain.crt
+cat int-nocrl.crt app-int-nocrl-ca.crt > int-nocrl-chain.crt
+
+# Separate root CA for TasmoFleet (alternative to the intermediate CA)
+key tf-ca.key
+openssl req -x509 -new -key tf-ca.key -out tf-ca.crt -days $days -subj "/CN=mqtt-acl-verify test TasmoFleet root CA"
+app_cert tf-app tf-app tf-ca
+cat app-ca.crt tf-ca.crt > app-and-tf-ca.crt
+
+# CRLs with 'openssl ca'; databases in crl-db/ (also used by reload-check.sh)
+ca_db() {
+    mkdir -p "crl-db/$1"
+    : > "crl-db/$1/index.txt"
+    echo 1000 > "crl-db/$1/crlnumber"
+    cat > "crl-db/$1.cnf" <<CNF
+[ca]
+default_ca = d
+[d]
+database = crl-db/$1/index.txt
+crlnumber = crl-db/$1/crlnumber
+default_md = sha256
+default_crl_days = $days
+CNF
+}
+ca() { n=$1; shift; openssl ca -config "crl-db/$n.cnf" -cert "$n.crt" -keyfile "$n.key" "$@" 2>/dev/null; }
+ca_db app-ca
+ca_db app-int-ca
+ca app-ca -revoke app-revoked.crt
+ca app-ca -revoke app-int-revoked-ca.crt
+ca app-ca -gencrl -out app-ca.crl
+ca app-int-ca -gencrl -out app-int-ca.crl
+# Every CA of a chain needs a CRL: app CA and the TasmoFleet intermediate CA,
+# deliberately none for app-int-nocrl-ca
+cat app-ca.crl app-int-ca.crl > crl.pem
+# Expired CRL of the app CA
+ca app-ca -gencrl -crl_lastupdate 20200101000000Z -crl_nextupdate 20200201000000Z -out crl-expired.pem
+
+# Files changed and restored by reload-check.sh
+cp crl.pem crl-reload.pem
+cp app-and-tf-ca.crt cafile-reload.crt
+
 rm -f ./*.csr ./*.ext ./*.srl
 chmod 0644 ./*.key ./*.crt
 echo "Certificates created in $(pwd)"

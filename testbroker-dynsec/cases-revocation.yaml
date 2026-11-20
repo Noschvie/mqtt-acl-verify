@@ -1,0 +1,67 @@
+# Revoking app certificates: CRL on the listener vs. a separate TasmoFleet root CA.
+# All listeners like 8887 (app certificates, subject as username).
+# Reloading CRL and cafile at runtime: reload-check.sh
+# Run:  ../.venv/bin/mqtt-acl-verify run -c config.yaml -t cases-revocation.yaml
+
+cases:
+  # --- Listener 8888: app CA with crlfile (CRLs of the app CA and the TasmoFleet intermediate CA) ---
+  - id: c-valid-app-cert
+    client: app-homeassistant
+    action: connect
+    endpoint: mtls-crl
+    expect: allow
+
+  - id: c-revoked-app-cert
+    client: app-revoked
+    action: connect
+    endpoint: mtls-crl
+    expect: deny
+
+  - id: c-intermediate-with-crl
+    description: "Certificate of the TasmoFleet intermediate CA, whose (empty) CRL is in crlfile"
+    client: int-viewer-chain
+    action: connect
+    endpoint: mtls-crl
+    expect: allow
+
+  - id: c-revoked-intermediate
+    description: "The whole chain is checked: revoking the intermediate CA locks all its certificates"
+    client: int-revokedca-chain
+    action: connect
+    endpoint: mtls-crl
+    expect: deny
+
+  - id: c-intermediate-without-crl
+    description: "Every CA of the chain needs a CRL in crlfile, otherwise the certificate is refused"
+    client: int-nocrl-chain
+    action: connect
+    endpoint: mtls-crl
+    expect: deny
+
+  # --- Listener 8889: expired CRL ---
+  - id: c-expired-crl-locks-all
+    description: "Risk: an expired CRL locks every certificate on the listener"
+    client: app-homeassistant
+    action: connect
+    endpoint: mtls-crl-expired
+    expect: deny
+
+  # --- Listener 8890: two roots in cafile (app CA and TasmoFleet CA) ---
+  - id: t-tasmofleet-root-accepted
+    client: tf-app
+    action: connect
+    endpoint: mtls-two-roots
+    expect: allow
+
+  - id: t-app-root-still-accepted
+    client: app-homeassistant
+    action: connect
+    endpoint: mtls-two-roots
+    expect: allow
+
+  - id: t-tasmofleet-root-removed
+    description: "Listener 8887 trusts only the app CA: removing the TasmoFleet CA from cafile locks its certificates"
+    client: tf-app
+    action: connect
+    endpoint: mtls-app
+    expect: deny
