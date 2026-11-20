@@ -133,6 +133,22 @@ identities:
     username: null
     cert_file: certs/int-pmss-admin-chain.crt
     key_file: certs/int-pmss-admin.key
+  app-reused-old:              # compromised, client deleted and created again (same subject)
+    username: null
+    cert_file: certs/app-reused-old.crt
+    key_file: certs/app-reused-old.key
+  app-reused-new:
+    username: null
+    cert_file: certs/app-reused-new.crt
+    key_file: certs/app-reused-new.key
+  app-renamed-old:             # compromised, client deleted; new certificate has a new subject
+    username: null
+    cert_file: certs/app-renamed-old.crt
+    key_file: certs/app-renamed-old.key
+  app-renamed-new:
+    username: null
+    cert_file: certs/app-renamed-new.crt
+    key_file: certs/app-renamed-new.key
   app-name-only:               # subject username of the app client, without certificate
     username: "CN=homeassistant,O=mqtt-apps"
   app-name-guess:
