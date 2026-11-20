@@ -4,13 +4,14 @@
 
 | File | Content |
 |---|---|
-| `mosquitto.conf` | Listeners 1883 (host 1884), 8884, 8885 and 8886 (mTLS), DynSec plugin, debug logging |
+| `mosquitto.conf` | Listeners 1883 (host 1884), 8883 (TLS), 8884–8887 (mTLS), DynSec plugin, debug logging |
 | `dynsec-setup.txt` | DynSec commands equivalent to `testbroker/acl`, one `mosquitto_ctrl dynsec` command per line |
 | `setup.sh` | Initialises DynSec, starts the broker, applies `dynsec-setup.txt` |
 | `config.yaml` | Endpoint and identities for `mqtt-acl-verify` |
 | `cases-dynsec.yaml` | Additional cases for the DynSec admin |
 | `cases-mtls.yaml` | Admin login variants on the mTLS listeners and the PMSS design v0.7 |
-| `make-certs.sh` | Test CA (server CA), admin CA, server and client certificates in `certs/` (called by `setup.sh`) |
+| `cases-apps.yaml` | PMSS design v0.8: TLS with password (8883), app certificates (8887), intermediate CA |
+| `make-certs.sh` | Server CA, admin CA, app CA with intermediate CA, server and client certificates in `certs/` (called by `setup.sh`) |
 | `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2-alpine` |
 
 ## Run
@@ -24,12 +25,12 @@ cd testbroker-dynsec
 export MQTT_OBSERVER_PASSWORD=test MQTT_DYNSEC_ADMIN_PASSWORD=test \
        MQTT_PW_KITCHEN=test MQTT_PW_LIVINGROOM=test MQTT_PW_TASMOFLEET=test \
        MQTT_PW_HOMEASSISTANT=test MQTT_PW_VIEWER=test MQTT_PW_UNKNOWN=wrong
-../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml
+../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml cases-apps.yaml
 ```
 
-Expected: `42 cases: 42 passed, 0 failed, 0 errors`.
+Expected: `62 cases: 62 passed, 0 failed, 0 errors`.
 
-Host ports: **1884** (plain), **8884**, **8885** and **8886** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
+Host ports: **1884** (plain), **8883** (TLS), **8884** to **8887** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
 
 `./setup.sh` keeps an existing DynSec configuration in `data/`. To start from scratch: `./setup.sh --reset`. After changing `mosquitto.conf`, run `./setup.sh` again (it recreates the container). After changing `dynsec-setup.txt`, run `./setup.sh --reset`.
 
@@ -42,6 +43,7 @@ Host ports: **1884** (plain), **8884**, **8885** and **8886** (mTLS). It can run
 | `pmss-admin`, `pmss-breakglass-admin` | PMSS design v0.7: **without password**, only via certificate of the admin CA on 8886 | Role `role_security_manager`: only `$CONTROL/dynamic-security/#` and `$SYS/#` |
 | `pmss-admin-disabled`, `pmss-admin-deleted` | Locking tests: disabled (`disableClient`) resp. deleted (`deleteClient`) | – |
 | `dynsec-bootstrap` | Bootstrap admin with password, deleted after the setup | – |
+| `CN=homeassistant,O=mqtt-apps`, `CN=viewer,O=mqtt-apps` | PMSS design v0.8: applications **without password**, only via app certificate on 8887 | `role_homeassistant` resp. `role_viewer` |
 | `observer` | Observer for `mqtt-acl-verify` | Read and write `#` |
 | `tasmofleet`, `homeassistant`, `viewer` | Applications | As in `testbroker/acl` |
 | `kitchen`, `livingroom` | Tasmota devices, group `group_tasmota` | `cmnd/%u/#` read, `stat/%u/#` and `tele/%u/#` write |
@@ -127,6 +129,37 @@ mosquitto_ctrl -h 127.0.0.1 -p 8886 --cafile certs/ca.crt \
     dynsec listClients
 ```
 
+## PMSS design v0.8: TLS listeners and app certificates
+
+Port mapping to production (PMSS document 6.3): test **8883** = production 8883 (TLS with password), test **8887** = production 8885 (app certificates). Production 8885 is taken here by the variant B listener.
+
+| Listener | Configuration |
+|---|---|
+| 8883 | TLS (`server-ext`, RSA, `tls_version tlsv1.2`), password login, same rights as 1883 |
+| 8887 | `cafile` = app CA only, `require_certificate true`, `use_subject_as_username true`, `tls_version tlsv1.2` |
+
+On 8887 the username is the **full subject** in RFC 2253 order: `/O=mqtt-apps/CN=homeassistant` becomes `CN=homeassistant,O=mqtt-apps`. App clients exist in DynSec under this name and have no password.
+
+| Case | Result |
+|---|---|
+| Password client on 8883 | ✅ allowed, same rights as on 1883 |
+| Password client without certificate on 8887 | ❌ refused (TLS handshake) |
+| App certificate on 8887 | ✅ allowed as `CN=homeassistant,O=mqtt-apps`, rights of that client, FILEDOWNLOAD denied |
+| App client name on 1883 or 8883, without or with password | ❌ refused – "TLS required" is enforced |
+| Certificate of the admin CA or server CA on 8887 | ❌ refused (TLS handshake) |
+| App certificate on the admin listener 8886 | ❌ refused (TLS handshake) |
+| App CA certificate with `CN=pmss-admin` | ⚠️ connects as `CN=pmss-admin,O=mqtt-apps`, **no** rights, no access to the control API |
+
+**Intermediate CA** (later: TasmoFleet issues app certificates with its own intermediate CA below the app CA):
+
+| Case | Result |
+|---|---|
+| Certificate of the intermediate CA, file contains certificate **and** intermediate CA | ✅ allowed – the listener trusts only the app CA, the chain is accepted |
+| Same, file contains the client certificate only | ❌ refused (TLS handshake) |
+| Intermediate CA issues `CN=pmss-admin` | ⚠️ connects as `CN=pmss-admin,O=mqtt-apps`, **no** rights, no access to the control API |
+
+So whoever holds the key of the intermediate CA can log in as any application, but never as admin. Applications must send the intermediate CA: `cat client.crt intermediate-ca.crt > client-chain.crt`.
+
 ## CI
 
-The integration test `test_dynsec_testbroker_cases` runs all 42 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API on 8886 with `mosquitto_ctrl` (access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`).
+The integration test `test_dynsec_testbroker_cases` runs all 62 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA.

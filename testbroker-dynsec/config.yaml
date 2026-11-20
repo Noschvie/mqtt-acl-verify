@@ -25,6 +25,18 @@ endpoints:
     port: 8886
     tls: true
     ca_file: certs/ca.crt
+  # PMSS design v0.8 (production 8883): TLS with password
+  tls-pw:
+    host: 127.0.0.1
+    port: 8883
+    tls: true
+    ca_file: certs/ca.crt
+  # PMSS design v0.8 (production 8885): app CA, username = full subject
+  mtls-app:
+    host: 127.0.0.1
+    port: 8887
+    tls: true
+    ca_file: certs/ca.crt
 
 # The DynSec admin only manages DynSec and has no access to normal topics.
 # A separate client with full rights observes the tests.
@@ -99,6 +111,33 @@ identities:
   dynsec-bootstrap:            # bootstrap admin, deleted after the setup
     username: dynsec-bootstrap
     password_env: MQTT_DYNSEC_ADMIN_PASSWORD
+
+  # --- PMSS design v0.8 (cases-apps.yaml, listener 8887, app CA) ---
+  app-homeassistant:           # app CA, DynSec client CN=homeassistant,O=mqtt-apps
+    username: null
+    cert_file: certs/app-homeassistant.crt
+    key_file: certs/app-homeassistant.key
+  app-pmss-admin:              # app CA, mis-issued with CN=pmss-admin
+    username: null
+    cert_file: certs/app-pmss-admin.crt
+    key_file: certs/app-pmss-admin.key
+  int-viewer-chain:            # intermediate CA, file contains certificate + intermediate CA
+    username: null
+    cert_file: certs/int-viewer-chain.crt
+    key_file: certs/int-viewer.key
+  int-viewer-leaf-only:        # intermediate CA, certificate only
+    username: null
+    cert_file: certs/int-viewer.crt
+    key_file: certs/int-viewer.key
+  int-pmss-admin-chain:        # intermediate CA, mis-issued with CN=pmss-admin
+    username: null
+    cert_file: certs/int-pmss-admin-chain.crt
+    key_file: certs/int-pmss-admin.key
+  app-name-only:               # subject username of the app client, without certificate
+    username: "CN=homeassistant,O=mqtt-apps"
+  app-name-guess:
+    username: "CN=homeassistant,O=mqtt-apps"
+    password_env: MQTT_PW_UNKNOWN
 
   kitchen:       {username: kitchen,       password_env: MQTT_PW_KITCHEN}
   livingroom:    {username: livingroom,    password_env: MQTT_PW_LIVINGROOM}
