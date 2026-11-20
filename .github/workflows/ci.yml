@@ -33,6 +33,24 @@ jobs:
             --cafile /mosquitto/certs/ca.crt \
             --cert /mosquitto/certs/dynsec-admin-cert.crt --key /mosquitto/certs/dynsec-admin-cert.key \
             dynsec getDefaultACLAccess
+      - name: PMSS design v0.7 - control API on listener 8886 (admin CA)
+        working-directory: testbroker-dynsec
+        run: |
+          # mosquitto_ctrl exits with 0 even on "Not authorized": check the output.
+          # Access means the client list (which contains pmss-admin) is returned.
+          ctrl() {
+            docker compose exec -T mosquitto mosquitto_ctrl -h localhost -p 8886 \
+              --cafile /mosquitto/certs/ca.crt \
+              --cert "/mosquitto/certs/$1.crt" --key "/mosquitto/certs/$1.key" \
+              dynsec listClients 2>&1 | grep -qx pmss-admin
+          }
+          # role_security_manager may manage DynSec
+          ctrl pmss-admin
+          ctrl pmss-breakglass-admin
+          # deleteClient locks an admin certificate
+          if ctrl pmss-admin-deleted; then echo "deleted admin still has access"; exit 1; fi
+          # known weakness: disableClient does not lock a certificate login
+          if ! ctrl pmss-admin-disabled; then echo "disableClient now locks certificate logins"; exit 1; fi
       - name: Install package
         run: pip install -e '.[dev]'
       - name: Test

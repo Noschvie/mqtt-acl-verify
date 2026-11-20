@@ -1,6 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Create a test CA, a server certificate and client certificates in ./certs.
+# Create the test CAs, a server certificate and client certificates in ./certs.
+#   ca.crt        test CA = server CA: server certificate and the clients of
+#                 listeners 8884/8885 (variants A and B)
+#   admin-ca.crt  admin CA: only admin certificates for listener 8886
+#                 (PMSS design v0.7)
 # For the test broker only: keys are unencrypted and world-readable so the
 # container user can read them.
 set -eu
@@ -29,6 +33,21 @@ for cn in dynsec-admin dynsec-admin-cert stranger; do
         -out "$cn.crt" -days $days -extfile client.ext 2>/dev/null
 done
 
-rm -f ./*.csr ./*.ext ca.srl
+# Admin CA (PMSS design v0.7): signs admin certificates only
+key admin-ca.key
+openssl req -x509 -new -key admin-ca.key -out admin-ca.crt -days $days -subj "/CN=mqtt-acl-verify test admin CA"
+
+# pmss-admin-disabled: exists in DynSec but is disabled (disableClient)
+# pmss-admin-deleted:  was an admin, deleted again (deleteClient)
+# admin-ca-unknown:    CN never known to DynSec
+for cn in pmss-admin pmss-breakglass-admin pmss-admin-disabled pmss-admin-deleted admin-ca-unknown; do
+    key "$cn.key"
+    openssl req -new -key "$cn.key" -out "$cn.csr" -subj "/CN=$cn"
+    printf 'extendedKeyUsage=clientAuth\n' > client.ext
+    openssl x509 -req -in "$cn.csr" -CA admin-ca.crt -CAkey admin-ca.key -CAcreateserial \
+        -out "$cn.crt" -days $days -extfile client.ext 2>/dev/null
+done
+
+rm -f ./*.csr ./*.ext ./*.srl
 chmod 0644 ./*.key ./*.crt
 echo "Certificates created in $(pwd)"

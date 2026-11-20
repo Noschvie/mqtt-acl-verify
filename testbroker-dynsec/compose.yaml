@@ -1,6 +1,6 @@
 # Start:   ./setup.sh            (initialises DynSec on first run)
 # Logs:    docker compose logs mosquitto > broker.log
-# Host ports 1884 (plain), 8884 and 8885 (mTLS); runs next to testbroker/ (1883).
+# Host ports 1884 (plain), 8884, 8885 and 8886 (mTLS); runs next to testbroker/ (1883).
 
 services:
   mosquitto:
@@ -9,6 +9,7 @@ services:
       - "127.0.0.1:1884:1883"
       - "127.0.0.1:8884:8884"
       - "127.0.0.1:8885:8885"
+      - "127.0.0.1:8886:8886"
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./data:/mosquitto/data
