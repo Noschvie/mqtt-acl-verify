@@ -13,7 +13,7 @@ A successful CONNECT or SUBSCRIBE proves nothing. Mosquitto, for example, grants
 | Backend | ACL tests | Inventory |
 |---|---|---|
 | Mosquitto Classic ACL | ✅ | ✅ (log) |
-| Mosquitto Dynamic Security | ✅ | ✅ (log) |
+| Mosquitto Dynamic Security (2.1+) | ✅ | ✅ (log) |
 | EMQX 5 | ✅ | planned (trace) |
 
 ACL tests work against any MQTT 3.1.1 / 5 broker, since they only use the protocol.
@@ -52,14 +52,16 @@ mqtt-acl-verify inventory broker.log --placeholders --by-user
 
 ## Try it locally
 
-`testbroker/` contains a Mosquitto with Classic ACL, matching config and cases. See [docs/testbroker.md](docs/testbroker.md).
+- `testbroker/` – Mosquitto with Classic ACL. See [docs/testbroker.md](docs/testbroker.md).
+- `testbroker-dynsec/` – Mosquitto 2.1.2 with Dynamic Security, same rights. See [docs/testbroker-dynsec.md](docs/testbroker-dynsec.md).
 
 ## Documentation
 
 - [Test model](docs/test-model.md) – how cases are executed, what "allow" and "deny" mean, safety rules
 - [Configuration](docs/configuration.md) – `config.yaml` and `cases.yaml` reference
 - [Topic inventory](docs/inventory.md) – deriving profiles from broker logs
-- [Test broker](docs/testbroker.md) – local Mosquitto for development
+- [Test broker](docs/testbroker.md) – local Mosquitto with Classic ACL
+- [Test broker with Dynamic Security](docs/testbroker-dynsec.md) – local Mosquitto 2.1.2 with DynSec
 
 ## Background
 

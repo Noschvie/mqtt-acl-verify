@@ -1,0 +1,32 @@
+# Additional cases for the Dynamic Security test broker.
+# Run together with the shared cases:
+#   mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml
+
+cases:
+  # The DynSec admin manages DynSec only. 'dynsec init' would let it read '#';
+  # dynsec-setup.txt removes that.
+  - id: dynsec-admin-connect
+    client: dynsec-admin
+    action: connect
+    expect: allow
+
+  - id: dynsec-admin-receive-tele
+    client: dynsec-admin
+    action: receive
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny
+
+  - id: dynsec-admin-receive-filedownload
+    client: dynsec-admin
+    action: receive
+    topic: stat/#
+    publish_topic: stat/kitchen/FILEDOWNLOAD
+    live: true
+    expect: deny
+
+  - id: dynsec-admin-publish-cmnd
+    client: dynsec-admin
+    action: publish
+    topic: cmnd/kitchen/{probe}
+    expect: deny

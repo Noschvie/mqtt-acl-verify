@@ -105,3 +105,25 @@ def test_testbroker_cases(broker, tmp_path, monkeypatch):
 
     failed = {cid: r.detail for cid, r in results.items() if r.status is not Status.PASS}
     assert failed == {}
+
+
+DYNSEC = os.environ.get("MQTT_TEST_BROKER_DYNSEC")
+DYNSEC_ENV = ENV | {"MQTT_OBSERVER_PASSWORD": "test", "MQTT_DYNSEC_ADMIN_PASSWORD": "test"}
+
+
+@pytest.mark.skipif(not DYNSEC, reason="MQTT_TEST_BROKER_DYNSEC not set (needs Mosquitto >= 2.1 with DynSec)")
+def test_dynsec_testbroker_cases(tmp_path, monkeypatch):
+    """Run against testbroker-dynsec/ (Mosquitto 2.1.2, started via setup.sh)."""
+    for key, value in DYNSEC_ENV.items():
+        monkeypatch.setenv(key, value)
+    host, _, port = DYNSEC.rpartition(":")
+    _wait_for_port(host, int(port))
+    cfg = tmp_path / "config.yaml"
+    text = (ROOT / "testbroker-dynsec/config.yaml").read_text()
+    cfg.write_text(text.replace("host: 127.0.0.1", f"host: {host}").replace("port: 1884", f"port: {port}"))
+
+    cases = [ROOT / "testbroker/cases.yaml", ROOT / "testbroker-dynsec/cases-dynsec.yaml"]
+    results = run_all(load_config(cfg, cases))
+
+    failed = {r.case.id: r.detail for r in results if r.status is not Status.PASS}
+    assert failed == {}

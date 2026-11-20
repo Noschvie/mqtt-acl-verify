@@ -65,6 +65,8 @@ cases:
 | `live` | | `true` allows topics without `{probe}` |
 | `description` | | Free text |
 
+Several case files can be combined, e.g. shared cases plus broker-specific ones: `-t ../testbroker/cases.yaml cases-dynsec.yaml`. Case IDs must be unique across all files.
+
 Run selected cases only: `mqtt-acl-verify run -c config.yaml -t cases.yaml --only dev-receive-own-cmnd unknown-connect`
 
 Exit codes: `0` all passed, `1` at least one fail or error, `2` configuration error.

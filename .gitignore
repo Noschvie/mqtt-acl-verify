@@ -14,3 +14,4 @@ reports/
 *.log
 .env
 testbroker/passwd
+testbroker-dynsec/data/
