@@ -18,6 +18,33 @@ removeRoleACL admin subscribePattern #
 createClient dynsec-admin-cert
 addClientRole dynsec-admin-cert admin
 
+# --- PMSS design v0.7: role_security_manager, admins without password,
+#     authenticated only by a certificate of the admin CA on listener 8886 ---
+# Production replaces the role 'admin' from 'dynsec init' by this role and
+# deletes 'admin'; the test broker keeps 'admin' for dynsec-admin (setup).
+createRole role_security_manager
+addRoleACL role_security_manager publishClientSend $CONTROL/dynamic-security/# allow
+addRoleACL role_security_manager publishClientReceive $CONTROL/dynamic-security/# allow
+addRoleACL role_security_manager subscribePattern $CONTROL/dynamic-security/# allow
+addRoleACL role_security_manager publishClientReceive $SYS/# allow
+addRoleACL role_security_manager subscribePattern $SYS/# allow
+createClient pmss-admin
+addClientRole pmss-admin role_security_manager
+createClient pmss-breakglass-admin
+addClientRole pmss-breakglass-admin role_security_manager
+createClient pmss-admin-disabled
+addClientRole pmss-admin-disabled role_security_manager
+disableClient pmss-admin-disabled
+# Locking an admin certificate: deleteClient. disableClient is NOT enough for
+# certificate logins (the plugin checks 'disabled' only for password logins).
+createClient pmss-admin-deleted
+addClientRole pmss-admin-deleted role_security_manager
+deleteClient pmss-admin-deleted
+# Bootstrap admin with password, deleted after the setup (as in production)
+createClient dynsec-bootstrap -p test
+addClientRole dynsec-bootstrap role_security_manager
+deleteClient dynsec-bootstrap
+
 # --- Observer for mqtt-acl-verify: read and write everything ---
 createRole role_observer
 addRoleACL role_observer publishClientSend # allow

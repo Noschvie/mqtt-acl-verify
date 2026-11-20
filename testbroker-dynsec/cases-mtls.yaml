@@ -1,4 +1,5 @@
-# Admin login variants on the mTLS listeners (overview questions 11, 17, 18).
+# Admin login variants on the mTLS listeners (overview questions 11, 17, 18, 27)
+# and the chosen PMSS design v0.7 (listener 8886, dedicated admin CA).
 # These cases record the observed broker behaviour, including weaknesses.
 # Run:  ../.venv/bin/mqtt-acl-verify run -c config.yaml -t cases-mtls.yaml
 
@@ -79,6 +80,116 @@ cases:
     client: stranger-cert
     action: receive
     endpoint: mtls-id
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny
+
+  # --- PMSS design v0.7: listener 8886, only certificates of the admin CA,
+  #     username = CN, no password, role role_security_manager ---
+  - id: p-pmss-admin-cert-only
+    client: pmss-admin
+    action: connect
+    endpoint: mtls-admin
+    expect: allow
+
+  - id: p-breakglass-admin-cert-only
+    client: pmss-breakglass-admin
+    action: connect
+    endpoint: mtls-admin
+    expect: allow
+
+  - id: p-pmss-admin-receive-tele
+    description: "role_security_manager has no access to normal topics"
+    client: pmss-admin
+    action: receive
+    endpoint: mtls-admin
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny
+
+  - id: p-pmss-admin-receive-filedownload
+    client: pmss-admin
+    action: receive
+    endpoint: mtls-admin
+    topic: stat/#
+    publish_topic: stat/kitchen/FILEDOWNLOAD
+    live: true
+    expect: deny
+
+  - id: p-pmss-admin-publish-cmnd
+    client: pmss-admin
+    action: publish
+    endpoint: mtls-admin
+    topic: cmnd/kitchen/{probe}
+    expect: deny
+
+  - id: p-pmss-admin-name-on-plain-without-password
+    description: "Question 18: the admin cannot log in on the plain listener"
+    client: pmss-admin-name-only
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: p-pmss-admin-name-on-plain-with-password
+    client: pmss-admin-name-guess
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: p-pmss-admin-cert-on-server-ca-listener
+    description: "Admin CA certificates are not accepted where the server CA is trusted"
+    client: pmss-admin
+    action: connect
+    endpoint: mtls-id
+    expect: deny
+
+  - id: p-server-ca-cert-refused
+    description: "Certificate of the server CA on the admin listener (fixes the weakness of variant B)"
+    client: stranger-cert
+    action: connect
+    endpoint: mtls-admin
+    expect: deny
+
+  - id: p-bootstrap-admin-deleted
+    description: "The bootstrap admin from 'dynsec init' is deleted and cannot log in"
+    client: dynsec-bootstrap
+    action: connect
+    endpoint: plain
+    expect: deny
+
+  - id: p-disabled-admin-not-locked
+    description: "Weakness: disableClient does not lock a certificate login; the client keeps its rights (CI checks the control API)"
+    client: pmss-admin-disabled
+    action: connect
+    endpoint: mtls-admin
+    expect: allow
+
+  - id: p-deleted-admin-connects
+    description: "deleteClient locks the admin: the CN is unknown afterwards, the connection has no rights"
+    client: pmss-admin-deleted
+    action: connect
+    endpoint: mtls-admin
+    expect: allow
+
+  - id: p-deleted-admin-has-no-rights
+    client: pmss-admin-deleted
+    action: receive
+    endpoint: mtls-admin
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny
+
+  - id: p-admin-ca-unknown-cn-connects
+    description: "Residual risk: any admin CA certificate connects; the admin CA issues admin certificates only"
+    client: admin-ca-unknown
+    action: connect
+    endpoint: mtls-admin
+    expect: allow
+
+  - id: p-admin-ca-unknown-cn-has-no-rights
+    client: admin-ca-unknown
+    action: receive
+    endpoint: mtls-admin
     topic: tele/#
     publish_topic: tele/kitchen/{probe}
     expect: deny

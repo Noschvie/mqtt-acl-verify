@@ -4,13 +4,13 @@
 
 | File | Content |
 |---|---|
-| `mosquitto.conf` | Listeners 1883 (host 1884), 8884 and 8885 (mTLS), DynSec plugin, debug logging |
+| `mosquitto.conf` | Listeners 1883 (host 1884), 8884, 8885 and 8886 (mTLS), DynSec plugin, debug logging |
 | `dynsec-setup.txt` | DynSec commands equivalent to `testbroker/acl`, one `mosquitto_ctrl dynsec` command per line |
 | `setup.sh` | Initialises DynSec, starts the broker, applies `dynsec-setup.txt` |
 | `config.yaml` | Endpoint and identities for `mqtt-acl-verify` |
 | `cases-dynsec.yaml` | Additional cases for the DynSec admin |
-| `cases-mtls.yaml` | Admin login variants on the mTLS listeners |
-| `make-certs.sh` | Test CA, server and client certificates in `certs/` (called by `setup.sh`) |
+| `cases-mtls.yaml` | Admin login variants on the mTLS listeners and the PMSS design v0.7 |
+| `make-certs.sh` | Test CA (server CA), admin CA, server and client certificates in `certs/` (called by `setup.sh`) |
 | `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2-alpine` |
 
 ## Run
@@ -27,9 +27,9 @@ export MQTT_OBSERVER_PASSWORD=test MQTT_DYNSEC_ADMIN_PASSWORD=test \
 ../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml
 ```
 
-Expected: `27 cases: 27 passed, 0 failed, 0 errors`.
+Expected: `42 cases: 42 passed, 0 failed, 0 errors`.
 
-Host ports: **1884** (plain), **8884** and **8885** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
+Host ports: **1884** (plain), **8884**, **8885** and **8886** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
 
 `./setup.sh` keeps an existing DynSec configuration in `data/`. To start from scratch: `./setup.sh --reset`. After changing `mosquitto.conf`, run `./setup.sh` again (it recreates the container). After changing `dynsec-setup.txt`, run `./setup.sh --reset`.
 
@@ -39,6 +39,9 @@ Host ports: **1884** (plain), **8884** and **8885** (mTLS). It can run next to `
 |---|---|---|
 | `dynsec-admin` | Manages DynSec via `mosquitto_ctrl`, password | Only `$CONTROL/dynamic-security/#` and `$SYS/#`, no normal topics |
 | `dynsec-admin-cert` | Same, **without password**, only via certificate on 8885 | Same role `admin` |
+| `pmss-admin`, `pmss-breakglass-admin` | PMSS design v0.7: **without password**, only via certificate of the admin CA on 8886 | Role `role_security_manager`: only `$CONTROL/dynamic-security/#` and `$SYS/#` |
+| `pmss-admin-disabled`, `pmss-admin-deleted` | Locking tests: disabled (`disableClient`) resp. deleted (`deleteClient`) | – |
+| `dynsec-bootstrap` | Bootstrap admin with password, deleted after the setup | – |
 | `observer` | Observer for `mqtt-acl-verify` | Read and write `#` |
 | `tasmofleet`, `homeassistant`, `viewer` | Applications | As in `testbroker/acl` |
 | `kitchen`, `livingroom` | Tasmota devices, group `group_tasmota` | `cmnd/%u/#` read, `stat/%u/#` and `tele/%u/#` write |
@@ -96,6 +99,34 @@ mosquitto_ctrl -h 127.0.0.1 -p 8885 --cafile certs/ca.crt \
     dynsec getDefaultACLAccess
 ```
 
+## PMSS design v0.7 (overview questions 17, 18, 27)
+
+Decision after the variant comparison: variant B with a **dedicated admin CA**. Listener 8886 trusts only `admin-ca.crt`; the server certificate comes from the test CA (server CA). The admins `pmss-admin` and `pmss-breakglass-admin` have no password and the role `role_security_manager`. The bootstrap admin `dynsec-bootstrap` is deleted after the setup, as in production.
+
+| Case | Result |
+|---|---|
+| `pmss-admin` / `pmss-breakglass-admin` certificate only on 8886 | ✅ allowed, `mosquitto_ctrl` works |
+| `pmss-admin` reads `tele/#`, FILEDOWNLOAD or publishes on `cmnd/…` | ❌ refused |
+| `pmss-admin` username on the plain listener, without or with password | ❌ refused (question 18) |
+| `pmss-admin` certificate on 8885 (server CA) | ❌ refused (TLS handshake) |
+| Certificate of the server CA on 8886 | ❌ refused (TLS handshake) – fixes the weakness of variant B |
+| Deleted bootstrap admin with password | ❌ refused |
+| Admin locked with `deleteClient` | ✅ connects without rights; an open connection is disconnected ("administrative action") |
+| Admin locked with `disableClient` | ⚠️ **still connects with full admin rights** |
+| Admin CA certificate with a CN unknown to DynSec | ⚠️ connects, but has no rights |
+
+**Locking an admin certificate:** use `deleteClient` (or remove its roles), not `disableClient`. The plugin checks the `disabled` flag only for password logins (`plugins/dynamic-security/auth.c`), not for certificate logins via `use_identity_as_username`, and not in the ACL check.
+
+**`mosquitto_ctrl` exit code:** it exits with 0 even on `Subscribe error: Not authorized`. Scripts must check the output (see the CI step).
+
+**Role name:** `dynsec init` always creates the role `admin` (fixed in Mosquitto 2.1.2, the documented `[role-name]` argument is not accepted). Production creates `role_security_manager`, assigns it and deletes `admin`. The test broker keeps `admin` for `dynsec-admin`, which `setup.sh` uses.
+
+```sh
+mosquitto_ctrl -h 127.0.0.1 -p 8886 --cafile certs/ca.crt \
+    --cert certs/pmss-breakglass-admin.crt --key certs/pmss-breakglass-admin.key \
+    dynsec listClients
+```
+
 ## CI
 
-The integration test `test_dynsec_testbroker_cases` runs all 27 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh`.
+The integration test `test_dynsec_testbroker_cases` runs all 42 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API on 8886 with `mosquitto_ctrl` (access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`).
