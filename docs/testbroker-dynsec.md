@@ -9,7 +9,7 @@
 | `setup.sh` | Initialises DynSec, starts the broker, applies `dynsec-setup.txt` |
 | `config.yaml` | Endpoint and identities for `mqtt-acl-verify` |
 | `cases-dynsec.yaml` | Additional cases for the DynSec admin |
-| `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2` |
+| `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2-alpine` |
 
 ## Run
 

@@ -4,7 +4,7 @@
 
 services:
   mosquitto:
-    image: eclipse-mosquitto:2.1.2   # same version as production
+    image: eclipse-mosquitto:2.1.2-alpine   # same version as production
     ports:
       - "127.0.0.1:1884:1883"
     volumes:
