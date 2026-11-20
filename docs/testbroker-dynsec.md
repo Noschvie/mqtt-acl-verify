@@ -15,7 +15,7 @@
 
 ## Run
 
-Prerequisites as in [testbroker.md](testbroker.md) (Docker, package installed in a venv).
+Prerequisites as in [testbroker.md](testbroker.md) (Docker, package installed in a venv in the repository root, `openssl`).
 
 ```sh
 cd testbroker-dynsec

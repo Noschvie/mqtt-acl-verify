@@ -1,6 +1,6 @@
 # Additional cases for the Dynamic Security test broker.
 # Run together with the shared cases:
-#   mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml
+#   ../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml
 
 cases:
   # The DynSec admin manages DynSec only. 'dynsec init' would let it read '#';

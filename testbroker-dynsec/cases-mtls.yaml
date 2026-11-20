@@ -1,6 +1,6 @@
 # Admin login variants on the mTLS listeners (overview questions 11, 17, 18).
 # These cases record the observed broker behaviour, including weaknesses.
-# Run:  mqtt-acl-verify run -c config.yaml -t cases-mtls.yaml
+# Run:  ../.venv/bin/mqtt-acl-verify run -c config.yaml -t cases-mtls.yaml
 
 cases:
   # --- Variant A: listener 8884, mTLS plus DynSec password (PMSS design) ---

@@ -1,4 +1,4 @@
-# Start:   ./create-passwd.sh && docker compose up
+# Start:   ./setup.sh            (creates passwd on first run)
 # Logs:    docker compose logs -f mosquitto > broker.log
 
 services:

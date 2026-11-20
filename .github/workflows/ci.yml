@@ -22,9 +22,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Start test broker
         working-directory: testbroker
-        run: |
-          ./create-passwd.sh
-          docker compose up -d
+        run: ./setup.sh
       - name: Start DynSec test broker
         working-directory: testbroker-dynsec
         run: ./setup.sh
