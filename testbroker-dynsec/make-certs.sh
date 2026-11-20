@@ -84,6 +84,14 @@ app_cert() {
 app_cert app-homeassistant homeassistant app-ca
 app_cert app-pmss-admin pmss-admin app-ca            # mis-issued: CN of an admin
 
+# Locking an app certificate (deleteClient), then issuing a new one:
+#   reused:  same subject again       -> the old certificate works again
+#   renamed: new subject (suffix -2)  -> the old certificate stays locked
+app_cert app-reused-old reused-app app-ca            # compromised, client deleted
+app_cert app-reused-new reused-app app-ca            # new certificate, same subject
+app_cert app-renamed-old renamed-app app-ca          # compromised, client deleted
+app_cert app-renamed-new renamed-app-2 app-ca        # new certificate, new subject
+
 # Signed by the intermediate CA. *-chain.crt = client certificate + intermediate CA,
 # as the application has to send it; *.crt alone lacks the intermediate CA.
 app_cert int-viewer viewer app-int-ca

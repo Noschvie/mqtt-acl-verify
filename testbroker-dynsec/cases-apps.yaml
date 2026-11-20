@@ -148,3 +148,40 @@ cases:
     topic: tele/#
     publish_topic: tele/kitchen/{probe}
     expect: deny
+
+  # --- Locking an app certificate (deleteClient) and issuing a new one ---
+  # DynSec knows only the subject, not the certificate. After a compromise the
+  # subject must never be reused, otherwise the old certificate works again.
+  - id: r-reused-subject-new-cert
+    client: app-reused-new
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: r-reused-subject-old-cert-works-again
+    description: "Weakness: client deleted and created again under the same subject, the compromised certificate has its rights back"
+    client: app-reused-old
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: r-new-subject-new-cert
+    client: app-renamed-new
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: allow
+
+  - id: r-new-subject-old-cert-stays-locked
+    description: "New certificate with a new subject (renamed-app-2): the compromised certificate stays without rights"
+    client: app-renamed-old
+    action: receive
+    endpoint: mtls-app
+    topic: tele/#
+    publish_topic: tele/kitchen/{probe}
+    expect: deny

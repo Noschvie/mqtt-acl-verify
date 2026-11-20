@@ -28,7 +28,7 @@ export MQTT_OBSERVER_PASSWORD=test MQTT_DYNSEC_ADMIN_PASSWORD=test \
 ../.venv/bin/mqtt-acl-verify run -c config.yaml -t ../testbroker/cases.yaml cases-dynsec.yaml cases-mtls.yaml cases-apps.yaml
 ```
 
-Expected: `62 cases: 62 passed, 0 failed, 0 errors`.
+Expected: `66 cases: 66 passed, 0 failed, 0 errors`.
 
 Host ports: **1884** (plain), **8883** (TLS), **8884** to **8887** (mTLS). It can run next to `testbroker/` (1883). `setup.sh` needs `openssl` on the host to create the test certificates.
 
@@ -160,6 +160,15 @@ On 8887 the username is the **full subject** in RFC 2253 order: `/O=mqtt-apps/CN
 
 So whoever holds the key of the intermediate CA can log in as any application, but never as admin. Applications must send the intermediate CA: `cat client.crt intermediate-ca.crt > client-chain.crt`.
 
+**Locking an app certificate and issuing a new one.** DynSec knows only the username, i.e. the subject, not the certificate. `deleteClient` locks every certificate with that subject.
+
+| Case | Result |
+|---|---|
+| Client deleted and **created again under the same subject**, old (compromised) certificate | ⚠️ **has its rights back** |
+| Client deleted, new certificate with a **new subject** (`CN=renamed-app-2`), old certificate | ❌ no rights |
+
+Rule: after locking a certificate because of a compromise, never reuse its subject. The new certificate gets a new name, e.g. with a suffix `-2`. Without a CRL this is the only way to keep the old certificate locked.
+
 ## CI
 
-The integration test `test_dynsec_testbroker_cases` runs all 62 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA.
+The integration test `test_dynsec_testbroker_cases` runs all 66 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA.

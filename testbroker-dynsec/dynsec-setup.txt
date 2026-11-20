@@ -90,6 +90,21 @@ addClientRole CN=homeassistant,O=mqtt-apps role_homeassistant
 createClient CN=viewer,O=mqtt-apps
 addClientRole CN=viewer,O=mqtt-apps role_viewer
 
+# Locking an app certificate and issuing a new one (cases-apps.yaml, r-*).
+# Reusing the subject: the client is deleted and created again under the same
+# name; the old (compromised) certificate gets the rights again.
+createClient CN=reused-app,O=mqtt-apps
+addClientRole CN=reused-app,O=mqtt-apps role_viewer
+deleteClient CN=reused-app,O=mqtt-apps
+createClient CN=reused-app,O=mqtt-apps
+addClientRole CN=reused-app,O=mqtt-apps role_viewer
+# New subject: the new certificate gets a new name, the old one stays locked.
+createClient CN=renamed-app,O=mqtt-apps
+addClientRole CN=renamed-app,O=mqtt-apps role_viewer
+deleteClient CN=renamed-app,O=mqtt-apps
+createClient CN=renamed-app-2,O=mqtt-apps
+addClientRole CN=renamed-app-2,O=mqtt-apps role_viewer
+
 # --- Tasmota devices: username = Tasmota Topic ---
 createRole role_tasmota
 addRoleACL role_tasmota subscribePattern cmnd/%u/# allow
