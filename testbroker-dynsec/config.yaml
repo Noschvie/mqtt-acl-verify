@@ -1,0 +1,24 @@
+# Config for the Dynamic Security test broker (testbroker-dynsec/). Password for all users: "test".
+#   export MQTT_OBSERVER_PASSWORD=test MQTT_DYNSEC_ADMIN_PASSWORD=test \
+#          MQTT_PW_KITCHEN=test MQTT_PW_LIVINGROOM=test MQTT_PW_TASMOFLEET=test \
+#          MQTT_PW_HOMEASSISTANT=test MQTT_PW_VIEWER=test MQTT_PW_UNKNOWN=wrong
+
+endpoints:
+  plain:
+    host: 127.0.0.1
+    port: 1884
+
+# The DynSec admin only manages DynSec and has no access to normal topics.
+# A separate client with full rights observes the tests.
+observer: observer
+timeout: 1.0
+
+identities:
+  observer:      {username: observer,      password_env: MQTT_OBSERVER_PASSWORD}
+  dynsec-admin:  {username: dynsec-admin,  password_env: MQTT_DYNSEC_ADMIN_PASSWORD}
+  kitchen:       {username: kitchen,       password_env: MQTT_PW_KITCHEN}
+  livingroom:    {username: livingroom,    password_env: MQTT_PW_LIVINGROOM}
+  tasmofleet:    {username: tasmofleet,    password_env: MQTT_PW_TASMOFLEET}
+  homeassistant: {username: homeassistant, password_env: MQTT_PW_HOMEASSISTANT}
+  viewer:        {username: viewer,        password_env: MQTT_PW_VIEWER}
+  unknown:       {username: nobody,        password_env: MQTT_PW_UNKNOWN}

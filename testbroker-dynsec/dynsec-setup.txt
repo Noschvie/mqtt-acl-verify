@@ -1,0 +1,64 @@
+# Dynamic Security setup equivalent to testbroker/acl.
+# One mosquitto_ctrl dynsec command per line (arguments split on whitespace).
+# Lines starting with "# " are comments. Applied by setup.sh and by the integration test.
+
+# --- Deny by default (DynSec allows receive and unsubscribe out of the box) ---
+setDefaultACLAccess publishClientSend deny
+setDefaultACLAccess publishClientReceive deny
+setDefaultACLAccess subscribe deny
+setDefaultACLAccess unsubscribe allow
+
+# --- Admin: only $CONTROL/dynamic-security, no access to normal topics ---
+# 'dynsec init' grants the admin role subscribe/receive on '#'. Remove it.
+removeRoleACL admin publishClientReceive #
+removeRoleACL admin subscribePattern #
+
+# --- Observer for mqtt-acl-verify: read and write everything ---
+createRole role_observer
+addRoleACL role_observer publishClientSend # allow
+addRoleACL role_observer publishClientReceive # allow
+addRoleACL role_observer subscribePattern # allow
+createClient observer -p test
+addClientRole observer role_observer
+
+# --- TasmoFleet ---
+createRole role_tasmofleet
+addRoleACL role_tasmofleet subscribePattern stat/# allow
+addRoleACL role_tasmofleet publishClientReceive stat/# allow
+addRoleACL role_tasmofleet subscribePattern tele/# allow
+addRoleACL role_tasmofleet publishClientReceive tele/# allow
+addRoleACL role_tasmofleet publishClientSend cmnd/# allow
+createClient tasmofleet -p test
+addClientRole tasmofleet role_tasmofleet
+
+# --- Home Assistant: read stat/# and tele/#, but never FILEDOWNLOAD (backup content) ---
+createRole role_homeassistant
+addRoleACL role_homeassistant subscribePattern stat/# allow
+addRoleACL role_homeassistant publishClientReceive stat/# allow
+addRoleACL role_homeassistant publishClientReceive stat/+/FILEDOWNLOAD deny 10
+addRoleACL role_homeassistant subscribePattern tele/# allow
+addRoleACL role_homeassistant publishClientReceive tele/# allow
+createClient homeassistant -p test
+addClientRole homeassistant role_homeassistant
+
+# --- Viewer: read only ---
+createRole role_viewer
+addRoleACL role_viewer subscribePattern tele/# allow
+addRoleACL role_viewer publishClientReceive tele/# allow
+addRoleACL role_viewer subscribePattern stat/# allow
+addRoleACL role_viewer publishClientReceive stat/# allow
+createClient viewer -p test
+addClientRole viewer role_viewer
+
+# --- Tasmota devices: username = Tasmota Topic ---
+createRole role_tasmota
+addRoleACL role_tasmota subscribePattern cmnd/%u/# allow
+addRoleACL role_tasmota publishClientReceive cmnd/%u/# allow
+addRoleACL role_tasmota publishClientSend stat/%u/# allow
+addRoleACL role_tasmota publishClientSend tele/%u/# allow
+createGroup group_tasmota
+addGroupRole group_tasmota role_tasmota
+createClient kitchen -p test
+addGroupClient group_tasmota kitchen
+createClient livingroom -p test
+addGroupClient group_tasmota livingroom

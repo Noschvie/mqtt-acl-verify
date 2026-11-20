@@ -53,7 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help="run ACL test cases against a broker")
     run.add_argument("-c", "--config", type=Path, required=True, help="endpoints and identities (YAML)")
-    run.add_argument("-t", "--cases", type=Path, required=True, help="test cases (YAML)")
+    run.add_argument("-t", "--cases", type=Path, nargs="+", required=True,
+                     help="test case files (YAML), several allowed")
     run.add_argument("-r", "--report", type=Path, help="write a Markdown report to this file")
     run.add_argument("--only", nargs="+", metavar="ID", help="run only these case IDs")
     run.set_defaults(func=_cmd_run)

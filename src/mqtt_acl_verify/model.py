@@ -151,7 +151,7 @@ def _load_yaml(path: Path) -> dict:
     return data
 
 
-def load_config(config_path: Path, cases_path: Path | None = None) -> Config:
+def load_config(config_path: Path, cases_path: Path | list[Path] | None = None) -> Config:
     data = _load_yaml(config_path)
 
     endpoints: dict[str, Endpoint] = {}
@@ -198,7 +198,14 @@ def load_config(config_path: Path, cases_path: Path | None = None) -> Config:
     )
 
     if cases_path is not None:
-        config.cases = load_cases(cases_path, identities, endpoints)
+        paths = cases_path if isinstance(cases_path, list) else [cases_path]
+        seen: set[str] = set()
+        for path in paths:
+            for case in load_cases(path, identities, endpoints):
+                if case.id in seen:
+                    raise ConfigError(f"{path}: duplicate case id '{case.id}'")
+                seen.add(case.id)
+                config.cases.append(case)
     return config
 
 

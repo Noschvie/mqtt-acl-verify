@@ -89,3 +89,16 @@ def test_generated_client_id_is_unique(tmp_path):
     cfg, cs = write(tmp_path, "cases: []\n")
     ident = load_config(cfg, cs).identities["dev"]
     assert ident.make_client_id() != ident.make_client_id()
+
+
+def test_several_case_files(tmp_path):
+    cfg, cs = write(tmp_path, """
+cases:
+  - {id: a, client: dev, action: connect, expect: allow}
+""")
+    second = tmp_path / "more.yaml"
+    second.write_text("cases:\n  - {id: b, client: dev, action: connect, expect: deny}\n")
+    assert [c.id for c in load_config(cfg, [cs, second]).cases] == ["a", "b"]
+    second.write_text("cases:\n  - {id: a, client: dev, action: connect, expect: deny}\n")
+    with pytest.raises(ConfigError, match="duplicate"):
+        load_config(cfg, [cs, second])
