@@ -71,6 +71,19 @@ jobs:
           MQTT_TEST_BROKER: 127.0.0.1:1883
           MQTT_TEST_BROKER_DYNSEC: 127.0.0.1:1884
         run: pytest -v
+      - uses: actions/setup-go@v5
+        if: matrix.python-version == '3.13'
+        with:
+          go-version: stable
+          cache: false
+      - name: autopaho reconnect probe (pending requests during a reconnect)
+        if: matrix.python-version == '3.13'
+        working-directory: probes/autopaho-reconnect
+        env:
+          MQTT_TEST_BROKER_DYNSEC: 127.0.0.1:1884
+        run: |
+          go mod tidy
+          go test -v ./...
       - name: Revocation - reload of CRL and cafile (SIGHUP vs. restart)
         working-directory: testbroker-dynsec
         run: ./reload-check.sh

@@ -210,6 +210,68 @@ For the later stage in which TasmoFleet issues app certificates, a compromised T
 - With a CRL, the CRL of the app CA **and** the CRL of the TasmoFleet intermediate CA must be in `crlfile` at all times and must be renewed before they expire. Otherwise every certificate on the listener is refused. The CRL of the app CA is signed with the offline key, the CRL of the intermediate CA by TasmoFleet.
 - With a separate root CA there is nothing to renew. Locking needs a broker restart (short interruption for all clients on all listeners).
 
+## Control API for PMSS
+
+Three questions from the PMSS design (risks "Korrelation" and "Paho Go / MQTT 5", decision S-5), answered against Mosquitto 2.1.2 and `paho.golang` v0.23.0.
+
+| Test | Location |
+|---|---|
+| `correlationData`, `getClient` | `tests/test_dynsec_control.py` (pytest, 13 tests) |
+| autopaho reconnect | `probes/autopaho-reconnect/` (`go test`, see its [README](../probes/autopaho-reconnect/README.md)) |
+
+```sh
+MQTT_TEST_BROKER_DYNSEC=127.0.0.1:1884 ../.venv/bin/pytest ../tests/test_dynsec_control.py -v
+cd ../probes/autopaho-reconnect && go mod tidy && MQTT_TEST_BROKER_DYNSEC=127.0.0.1:1884 go test -v ./...
+```
+
+### Is `correlationData` returned?
+
+Yes, per command, also for errors, in the order of the batch (`src/control_common.c`).
+
+| Case | Result |
+|---|---|
+| String `correlationData`, several commands in one request | ✅ each response carries its own value, order kept |
+| Error response (`Client not found`, `Client already exists`) | ✅ carries `correlationData` |
+| UUID, empty string | ✅ returned verbatim |
+| No `correlationData` | field missing in the response |
+| `correlationData` not a string (e.g. number) | ⚠️ error `Invalid correlationData data type.` **without** `correlationData`; the **remaining commands of the batch are not executed** |
+| Payload not JSON, `commands` not an array | ⚠️ error without `correlationData` |
+| MQTT 5 `Response Topic` / `Correlation Data` properties | ⚠️ ignored: the answer always goes to `$CONTROL/dynamic-security/v1/response`, without properties |
+| Second admin subscribed to the response topic | ⚠️ receives **every** response (the plugin publishes to all subscribers, not to the requester) |
+
+Consequences for PMSS: always send `correlationData` as string (UUID); responses without or with unknown `correlationData` are expected (other admins, `mosquitto_ctrl`, invalid requests) and are logged and dropped; a request whose response has no `correlationData` ends by timeout. Responses of PMSS are visible to every other client with read access to the response topic.
+
+### Does `getClient` return a password hash?
+
+No. The hash (`encoded_password`) is only in `dynamic-security.json`.
+
+| Case | Result |
+|---|---|
+| `getClient` of a password client | ✅ no `password`, `encoded_password`, salt or iteration field |
+| `listClients` with `verbose` | ✅ same |
+| `getClient` before and after `setClientPassword` | ✅ identical – **S-5 holds**: a password change does not change the client ETag |
+| `disabled` | appears only as `true`; enabled clients have no field. The ETag must treat missing and `false` alike |
+
+### autopaho with pending requests during a reconnect
+
+| Case | Result |
+|---|---|
+| 20 parallel requests on one response topic | ✅ all matched by `correlationData` |
+| Reconnect, clean session, subscribed once after the first connect | ❌ **no responses** after the reconnect – autopaho does not subscribe again |
+| Reconnect, subscription in `OnConnectionUp` | ✅ responses arrive |
+| Reconnect, `SessionExpiryInterval` 60 s, subscribed once | ✅ `SessionPresent`, the broker session keeps the subscription |
+| `Publish` while the connection is down | ⚠️ returns `ConnectionDownError` **immediately**, no waiting for the reconnect (`AwaitConnection` waits) |
+| Connection lost after the broker executed `createClient` (PUBACK and response lost), clean session | ⚠️ `Publish` does **not** return on the connection loss, only when its context expires; the response is lost; the client **was created** |
+| Same, `SessionExpiryInterval` 60 s | ⚠️ paho retransmits the PUBLISH after the reconnect, Mosquitto **executes the command a second time**; only the answer to the repetition arrives: `Client already exists` |
+
+Consequences for PMSS:
+
+- Subscribe to the response topic in `OnConnectionUp` (on every connection), not once after start.
+- Use a clean session (`SessionExpiryInterval` 0): DynSec commands are not idempotent, and a retransmission after the reconnect returns the error of the second execution with the correlation ID of the first.
+- Every request needs a context timeout; a connection loss does not end a pending `Publish`.
+- After a timeout the state is unknown: the command may have been executed. PMSS reads the object back (`getClient`/`getRole`/`getGroup`) before it reports an error or retries.
+- On `ConnectionDownError`, either answer `503` at once or wait with `AwaitConnection` for a limited time.
+
 ## CI
 
-The integration test `test_dynsec_testbroker_cases` runs all 75 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA. After the tests it runs `reload-check.sh`.
+The integration test `test_dynsec_testbroker_cases` runs all 75 cases against this broker when `MQTT_TEST_BROKER_DYNSEC=host:port` is set. CI starts the broker with `./setup.sh` and checks the control API with `mosquitto_ctrl`: on 8886 access for `pmss-admin` and `pmss-breakglass-admin`, none for `pmss-admin-deleted`, known weakness for `pmss-admin-disabled`; on 8887 no access for app certificates with `CN=pmss-admin` from the app CA or the intermediate CA. After the tests it runs `reload-check.sh` and the autopaho probe (`go test` in `probes/autopaho-reconnect/`). The pytest run includes `tests/test_dynsec_control.py`.
