@@ -1,6 +1,6 @@
 # Test broker
 
-`testbroker/` contains a local Mosquitto 2.1.2 (`eclipse-mosquitto:2.1.2-alpine`, same version as production) with Classic ACL for development and demonstration.
+`testbroker/` contains a local Mosquitto 2.1.4 (`eclipse-mosquitto:2.1.4-alpine`, same version as production) with Classic ACL for development and demonstration.
 
 | File | Content |
 |---|---|

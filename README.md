@@ -53,7 +53,7 @@ mqtt-acl-verify inventory broker.log --placeholders --by-user
 ## Try it locally
 
 - `testbroker/` – Mosquitto with Classic ACL. See [docs/testbroker.md](docs/testbroker.md).
-- `testbroker-dynsec/` – Mosquitto 2.1.2 with Dynamic Security, same rights. See [docs/testbroker-dynsec.md](docs/testbroker-dynsec.md).
+- `testbroker-dynsec/` – Mosquitto 2.1.4 with Dynamic Security, same rights. See [docs/testbroker-dynsec.md](docs/testbroker-dynsec.md).
 - `tests/test_dynsec_control.py`, `probes/autopaho-reconnect/` – DynSec control API checks for PMSS (`correlationData`, `getClient`, autopaho reconnect). See [docs/testbroker-dynsec.md](docs/testbroker-dynsec.md#control-api-for-pmss).
 
 ## Documentation
@@ -62,7 +62,7 @@ mqtt-acl-verify inventory broker.log --placeholders --by-user
 - [Configuration](docs/configuration.md) – `config.yaml` and `cases.yaml` reference
 - [Topic inventory](docs/inventory.md) – deriving profiles from broker logs
 - [Test broker](docs/testbroker.md) – local Mosquitto with Classic ACL
-- [Test broker with Dynamic Security](docs/testbroker-dynsec.md) – local Mosquitto 2.1.2 with DynSec
+- [Test broker with Dynamic Security](docs/testbroker-dynsec.md) – local Mosquitto 2.1.4 with DynSec
 
 ## Background
 

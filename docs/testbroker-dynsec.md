@@ -1,6 +1,6 @@
 # Test broker with Dynamic Security
 
-`testbroker-dynsec/` contains a local Mosquitto **2.1.2** with the Dynamic Security plugin (DynSec). It grants the same rights as the Classic ACL test broker in `testbroker/`, so both run the same cases.
+`testbroker-dynsec/` contains a local Mosquitto **2.1.4** with the Dynamic Security plugin (DynSec). It grants the same rights as the Classic ACL test broker in `testbroker/`, so both run the same cases.
 
 | File | Content |
 |---|---|
@@ -14,7 +14,7 @@
 | `cases-revocation.yaml` | Revoking app certificates: CRL (8888, 8889) vs. a separate TasmoFleet root CA (8890) |
 | `reload-check.sh` | Changes CRL and cafile at runtime (8891, 8892) and checks SIGHUP vs. restart; restores the files |
 | `make-certs.sh` | Server CA, admin CA, app CA with intermediate CAs, TasmoFleet root CA, CRLs, server and client certificates in `certs/` (called by `setup.sh`) |
-| `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.2-alpine` |
+| `compose.yaml` | Docker setup, image pinned to `eclipse-mosquitto:2.1.4-alpine` |
 
 ## Run
 

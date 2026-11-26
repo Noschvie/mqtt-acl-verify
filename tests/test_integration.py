@@ -113,7 +113,7 @@ DYNSEC_ENV = ENV | {"MQTT_OBSERVER_PASSWORD": "test", "MQTT_DYNSEC_ADMIN_PASSWOR
 
 @pytest.mark.skipif(not DYNSEC, reason="MQTT_TEST_BROKER_DYNSEC not set (needs Mosquitto >= 2.1 with DynSec)")
 def test_dynsec_testbroker_cases(tmp_path, monkeypatch):
-    """Run against testbroker-dynsec/ (Mosquitto 2.1.2, started via setup.sh)."""
+    """Run against testbroker-dynsec/ (Mosquitto 2.1.4, started via setup.sh)."""
     for key, value in DYNSEC_ENV.items():
         monkeypatch.setenv(key, value)
     host, _, port = DYNSEC.rpartition(":")
