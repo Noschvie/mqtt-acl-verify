@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""DynSec control API of Mosquitto 2.1.2: properties PMSS relies on.
+"""DynSec control API of Mosquitto 2.1.4: properties PMSS relies on.
 
 - correlationData: is it returned in the response, per command, in every case?
 - getClient: does it ever return a password hash? (basis for decision S-5:
